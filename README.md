@@ -8,10 +8,6 @@ Open Urban Mobility Toolkit (OpenMob)
 
 ## Usage
 
-## Roadmap
-
-## Contributing
-
 ## Authors and acknowledgment
 
 ## License
