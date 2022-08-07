@@ -26,7 +26,7 @@ from utils import MiniTools
 import collections
 # Load the function file in another file
 #sys.path.append('../')
-import MobakuProcessing
+import demographic_processing
 
 
 # 4.Define the global variables. (if exists)
