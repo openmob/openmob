@@ -15,6 +15,6 @@ Open Urban Mobility Toolkit (OpenMob)
 ## Authors and acknowledgment
 
 ## License
-MMSegmentation is released under the MIT license. Please refer to LICENSES.md for the careful check.
+openmob is released under the MIT license. Please refer to LICENSES.md for the careful check.
 
 ## Project status
