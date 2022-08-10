@@ -14,6 +14,7 @@ Please refer to the [requirements.txt](requirements.txt) for the necessary pytho
 
 ## Authors and acknowledgment
 We will add this part later shortly.
+Haoran Zhang (supervisor)...
 
 ## License
 OpenMOB is released under the MIT license. Please refer to [LICENSES](LICENSE) for the careful check.
