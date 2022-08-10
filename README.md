@@ -13,9 +13,9 @@ This project contains several preprocessing tools built by python:
 Please refer to the [requirements.txt](requirements.txt) for the necessary python library.
 
 ## Authors and acknowledgment
-We will add this part later shortly.
-Haoran Zhang (supervisor)...
-
+We will add this part later shortly. \n
+Haoran Zhang: ... \n
+Dou Huang: \n
 
 ## License
 OpenMOB is released under the MIT license. Please refer to [LICENSES](LICENSE) for the careful check.
