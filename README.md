@@ -1,6 +1,6 @@
 # OpenMob
+![Open Urban Mobility Toolkit (OpenMob)](/figures/title.png)
 
-Open Urban Mobility Toolkit (OpenMob). \
 This project contains several preprocessing tools built by python:
 * Building life pattern tree from raw GPS trajectory data.
 * Preprocessing tools are used for the generation model of the "pseudo life pattern." 
