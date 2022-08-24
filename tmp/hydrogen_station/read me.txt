@@ -1,0 +1,1 @@
+The code is designated to make statistics on the travel quantity of land use segments from the 2013 docomo dataset.
