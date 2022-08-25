@@ -967,7 +967,7 @@ class LifePatternProcessor:
                 group = np.array(data_a['LP_label'])
 
                 fig = plt.figure(figsize=(8, 5), dpi=200)
-                ax = Axes3D(fig,auto_add_to_figure=Flase)
+                ax = Axes3D(fig,auto_add_to_figure=False)
                 fig.add_axes(ax)
                 for g in np.unique(group):
                     ix = np.where(group == g)
