@@ -61,7 +61,7 @@ class InputGenerationFromLabelTraj:
         :param gene_mode: Re_Calculate / LOAD_EXISTING
         :param week_holiday_mode: 1->weekday  2->weekend
         :param total_lp_code_df:
-        :return:
+        :return: None
         """
 
         OUT_PUT_FOLDER = '../assets/Input_LP/' + str(1 - week_holiday_mode) + '/'   #1->weekday  2->weekend
