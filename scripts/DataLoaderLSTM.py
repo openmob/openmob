@@ -1,12 +1,16 @@
 import torch
+from torch.utils import data
 import pandas as pd
 from collections import Counter
 
-class Dataset(torch.utils.data.Dataset):
+
+class Dataset(data.Dataset):
     def __init__(
-        self,
-        sequence_length,
+            self,
+            sequence_length,
+            file_path
     ):
+        self.file_path = file_path
         self.sequence_length = sequence_length
         self.words = self.load_words()
         self.uniq_words = self.get_uniq_words()
@@ -17,7 +21,7 @@ class Dataset(torch.utils.data.Dataset):
         self.words_indexes = [self.word_to_index[w] for w in self.words]
 
     def load_words(self):
-        train_df = pd.read_csv('../assets/LSTM_None/user_40.csv',index_col=0)#.iloc[0:20000]
+        train_df = pd.read_csv(self.file_path, index_col=0)  # Need further modification
         text = train_df.values.reshape(-1)
         return text
 
@@ -29,13 +33,13 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.words_indexes) - self.sequence_length
 
     def __getitem__(self, index):
-        if self.index_to_word[self.words_indexes[index:index+self.sequence_length][0]] != 'DAY_END':
+        if self.index_to_word[self.words_indexes[index:index + self.sequence_length][0]] != 'DAY_END':
             return (
-                torch.tensor(self.words_indexes[index:index+self.sequence_length]),
-                torch.tensor(self.words_indexes[index+1:index+self.sequence_length+1]),
+                torch.tensor(self.words_indexes[index:index + self.sequence_length]),
+                torch.tensor(self.words_indexes[index + 1:index + self.sequence_length + 1]),
             )
         else:
             return (
-                torch.tensor(self.words_indexes[index:index+self.sequence_length]),
-                torch.tensor(self.words_indexes[index:index+self.sequence_length]),
+                torch.tensor(self.words_indexes[index:index + self.sequence_length]),
+                torch.tensor(self.words_indexes[index:index + self.sequence_length]),
             )
