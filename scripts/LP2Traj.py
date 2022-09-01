@@ -7,46 +7,20 @@
 'This file is for trajectory generation Class'
 __author__ = 'Li Peiran'
 
-# 3.Import the modules.
-#import os
-#import sys
-#import numpy as np
-#import pandas as pd
-from tqdm import tqdm
-#from tqdm.notebook import tqdm
-#from skmob.measures.individual import home_location
-#import multiprocessing as mp
-#from multiprocessing import Pool
-#from multiprocessing import RLock
-#import threading as td
-import time
-#import pickle
-import jismesh.utils as ju
-import pandas as pd
-from pandas import DataFrame
-#from scipy import sparse
-# For NN
-import torch
-import torch.nn.functional as F  # 激励函数都在这
-#from torch.autograd import Variable
-#import torch.nn as nn
-#import scipy.stats
-#from pyswarm import pso
-#from operator import itemgetter
-import numpy as np
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D  # 空间三维画图
-#import datetime
-from LPGeneration.models import FNNGAN, DCGAN, GCN, WordLSTM
-import MiniTools
-import LPGeneration.data_loader.DataLoaderLSTM as DataLoaderLSTM
-from collections import ChainMap
-# coding=utf-8
-import torch.autograd
-#import torch.nn as nn
-from torch.autograd import Variable
-
 import os
+import time
+from collections import ChainMap
+import DataLoaderLSTM as DataLoaderLSTM
+import minitools
+import jismesh.utils as ju
+import numpy as np
+import pandas as pd
+import torch
+import torch.autograd
+import FNNGAN, DCGAN, GCN, WordLSTM
+from pandas import DataFrame
+from torch.autograd import Variable
+from tqdm import tqdm
 
 # 4.Define the global variables. (if exists)
 
@@ -108,7 +82,7 @@ class TrajGenerator():
             GRAPH_FORM_PKL_PATH = MODEL_FOLDER_PATH + 'graph_form.pkl'
             vector_form_df = pd.read_csv(VECTOR_FORM_DF_PATH, index_col=0).T
             vector_size = len(vector_form_df.columns)
-            graph = MiniTools.loadPKL(GRAPH_FORM_PKL_PATH)
+            graph = minitools.loadPKL(GRAPH_FORM_PKL_PATH)
             if LOC_MODE == 'Pure Gaussian Noise':
                 loc_info_list = [0 for x in total_lp_code_list]
                 z_dimension = 100
@@ -136,22 +110,22 @@ class TrajGenerator():
         # Load the labelled traj files
 
         lp_file_list = []
-        MiniTools.getFilePath(ORI_LP_FOLDER, lp_file_list, dir_list=[], target_ext='.csv')
+        minitools.getFilePath(ORI_LP_FOLDER, lp_file_list, dir_list=[], target_ext='.csv')
 
         # Load the traj library
 
         temp_folder_list = []
         od_lib_df_list = []
         od_lib_dict_file_list = []
-        MiniTools.getFilePath(OD_LIB_PATH, od_lib_dict_file_list, temp_folder_list, '.pkl')
+        minitools.getFilePath(OD_LIB_PATH, od_lib_dict_file_list, temp_folder_list, '.pkl')
         OB_LIB_USER_NUM = len(od_lib_dict_file_list)
         # # Merge all lib (太慢了，暂时先不merge，用低配版的，逐人建lib，配不上也不搜寻其他人)
         od_lib_dict_list = []
         for i in range(len(od_lib_dict_file_list)):
-            temp_od_lib_dict = MiniTools.loadPKL(od_lib_dict_file_list[i])
+            temp_od_lib_dict = minitools.loadPKL(od_lib_dict_file_list[i])
             od_lib_dict_list.extend(temp_od_lib_dict)
         total_od_lib_dict = dict(ChainMap(*od_lib_dict_list))
-        MiniTools.savePKL(total_od_lib_dict,'../assets/total_od_lib_dict.pkl')
+        minitools.savePKL(total_od_lib_dict,'../assets/total_od_lib_dict.pkl')
 
         # 5.Define the class (if exsists)
         # 6.Define the function (if exsists)
@@ -269,7 +243,7 @@ def lpPob2LpCode(temp_lp,DATA_STRUCT_MODE,vector_form_df,temperature):
             # 按照归一化之后的概率取值
             p = temp_lp.iloc[i].values
             #p = total_lp_code_list[uid][0:24, :][i]
-            p = MiniTools.normSum(p)
+            p = minitools.normSum(p)
             #DataFrame(p,index=lp_code).sort_values(by=0,ascending=False)
             #print(p)
             if sum(p)>12:
@@ -454,7 +428,7 @@ def main(k):
                 temp_lp = DataFrame(fake_images.numpy())
             temp_lp.columns = WeekTrajGenerator.vector_form_df.columns
         elif DATA_STRUCT_MODE =='matrix':
-            temp_lp = DataFrame(MiniTools.normSumAxis1(fake_images.numpy()[0][0]))
+            temp_lp = DataFrame(minitools.normSumAxis1(fake_images.numpy()[0][0]))
             temp_lp.columns = WeekTrajGenerator.matrix_form_df.columns
         elif DATA_STRUCT_MODE =='vector_lstm':
             temp_lp = fake_lstm_lp_list
@@ -476,7 +450,7 @@ def main(k):
         G = HoliTrajGenerator.G
         temp_lp_df = pd.read_csv(HoliTrajGenerator.lp_file_list[i % WeekTrajGenerator.OB_LIB_USER_NUM])
         temp_lp_location_dict = lpFile2LocDict(temp_lp_df)  # significant places
-        od_lib_dict = MiniTools.loadPKL(HoliTrajGenerator.od_lib_dict_file_list[i % HoliTrajGenerator.OB_LIB_USER_NUM])
+        od_lib_dict = minitools.loadPKL(HoliTrajGenerator.od_lib_dict_file_list[i % HoliTrajGenerator.OB_LIB_USER_NUM])
         od_lib_dict = dict(ChainMap(*od_lib_dict))
 
         if MODEL_TYPE == 'LSTM':
@@ -495,7 +469,7 @@ def main(k):
                 temp_lp = DataFrame(fake_images.numpy())
             temp_lp.columns = HoliTrajGenerator.vector_form_df.columns
         elif DATA_STRUCT_MODE == 'matrix':
-            temp_lp = DataFrame(MiniTools.normSumAxis1(fake_images.numpy()[0][0]))
+            temp_lp = DataFrame(minitools.normSumAxis1(fake_images.numpy()[0][0]))
             temp_lp.columns = HoliTrajGenerator.matrix_form_df.columns
         elif DATA_STRUCT_MODE == 'vector_lstm':
             temp_lp = fake_lstm_lp_list

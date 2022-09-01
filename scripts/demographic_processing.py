@@ -3,33 +3,19 @@
 # -*- coding: utf-8 -*-
 
 # 2.Note for this file.
-'This file is for mobaku pre-processing'
+"""This file is for mobaku pre-processing"""
 __author__ = 'Li Peiran'
 
 # 3.Import the modules.
-import skmob
 import os
-import pandas as pd
+
 import geopandas as gpd
-from shapely import geometry
-from pandas import DataFrame
-import math
-import pickle
 import jismesh.utils as ju
-import numpy as np
-from utils import MiniTools
+import pandas as pd
+from pandas import DataFrame
+from shapely import geometry
+import minitools
 
-# 4.Define the global variables. (if exists)
-
-
-# 5.Define the class (if exsists)
-
-# 6.Define the function (if exsists)
-# class MobakuProcessing():
-#     """
-#     This class is for mobaku processing.
-#
-#     """
 
 def createPolygon(meshcode):
     """
@@ -52,7 +38,6 @@ def transMobaku2Shape(MOBAKU_FOLDER_PATH, OUTPUT_FOLDER_PATH=''):
 
     Args:
         Mobaku data folder path
-        requires:
         1. Folder must contain: '01_総数.csv'
         '02_性年代(10歳階).csv'
         2. and mobaku data must
@@ -83,6 +68,7 @@ def transMobaku2Shape(MOBAKU_FOLDER_PATH, OUTPUT_FOLDER_PATH=''):
 
     return 1
 
+
 def transMobaku2PKL(MOBAKU_DEMOGRAPHIC_PATH, OUTPUT_FOLDER_PATH=''):
     """
     Load Mobaku CSV file to pkl file (preparing for fast labeling)
@@ -105,23 +91,24 @@ def transMobaku2PKL(MOBAKU_DEMOGRAPHIC_PATH, OUTPUT_FOLDER_PATH=''):
     demographic_df = pd.read_csv(MOBAKU_DEMOGRAPHIC_PATH)
     demographic_df = demographic_df.drop(['residence'], axis=1)
 
-    #Check the save folders
-    MiniTools.ifFolderExistThenCreate(OUTPUT_FOLDER_PATH + 'by_absolute_date/')
-    MiniTools.ifFolderExistThenCreate(OUTPUT_FOLDER_PATH + 'by_day_of_week/')
+    # Check the save folders
+    minitools.if_folder_exist_then_create(OUTPUT_FOLDER_PATH + 'by_absolute_date/')
+    minitools.if_folder_exist_then_create(OUTPUT_FOLDER_PATH + 'by_day_of_week/')
 
-    #With absolute date
+    # With absolute date
     for key, item in demographic_df.groupby(['age', 'gender']):
         temp_dict = {(x, y, z): value for (x, y, z, value) in
                      item[['date', 'time', 'area', 'population']].values}
-        MiniTools.savePKL(temp_dict, OUTPUT_FOLDER_PATH + 'by_absolute_date/' + str(key))
+        minitools.save_pkl(temp_dict, OUTPUT_FOLDER_PATH + 'by_absolute_date/' + str(key))
 
-    #With the day_of_week
+    # With the day_of_week
     for key, item in demographic_df.groupby(['age', 'gender']):
         temp_dict = {(x, y, z): value for (x, y, z, value) in
                      item[['day_of_week', 'time', 'area', 'population']].values}
-        MiniTools.savePKL(temp_dict, OUTPUT_FOLDER_PATH + 'by_day_of_week/' + str(key))
+        minitools.save_pkl(temp_dict, OUTPUT_FOLDER_PATH + 'by_day_of_week/' + str(key))
 
-def getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH,load_mode='by_day_of_week'):
+
+def getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week'):
     """
     Merge the pkl, return the demographic dataframe
 
@@ -133,20 +120,20 @@ def getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH,load_mode='by_day_of_week'):
     Returns:
         The SA matrix
     """
-    PKL_PATH = MOBAKU_PKL_FOLDER_PATH +'/'+ load_mode
+    PKL_PATH = MOBAKU_PKL_FOLDER_PATH + '/' + load_mode
     folder_list = []
     PKL_list = []
-    MiniTools.getFilePath(PKL_PATH, PKL_list, folder_list, '.pkl')
+    minitools.get_file_path(PKL_PATH, PKL_list, folder_list, '.pkl')
     demographic_df_list = []
     for file in PKL_list:
-        temp_pkl = MiniTools.loadPKL(file)
+        temp_pkl = minitools.load_pkl(file)
         demographic_df_list.append(temp_pkl)
     demographic_df = DataFrame(demographic_df_list).T
-    demographic_df.dropna(axis=0, how='any',inplace=True)  # drop all rows that have any NaN values
+    demographic_df.dropna(axis=0, how='any', inplace=True)  # drop all rows that have any NaN values
     return demographic_df
 
-def generateCsvSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH,load_mode='by_day_of_week'):
 
+def generateCsvSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week'):
     """
     Merge the pkl, return the demographic dataframe,and save as .csv file
 
@@ -158,26 +145,26 @@ def generateCsvSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH,load_mode='by_day_of_week'
     Returns:
         1
     """
-    PKL_PATH = (os.path.join(MOBAKU_PKL_FOLDER_PATH,load_mode))
+    PKL_PATH = (os.path.join(MOBAKU_PKL_FOLDER_PATH, load_mode))
     folder_list = []
     PKL_list = []
-    MiniTools.getFilePath(PKL_PATH, PKL_list, folder_list, '.pkl')
+    minitools.get_file_path(PKL_PATH, PKL_list, folder_list, '.pkl')
     demographic_df_list = []
     for file in PKL_list:
-        temp_pkl = MiniTools.loadPKL(file)
+        temp_pkl = minitools.load_pkl(file)
         demographic_df_list.append(temp_pkl)
     demographic_df = DataFrame(demographic_df_list).T
-    demographic_df.dropna(axis=0, how='any',inplace=True)  # drop all rows that have any NaN values
-    demographic_df.to_csv(os.path.join(PKL_PATH,'SA_GT_df.csv'))
+    demographic_df.dropna(axis=0, how='any', inplace=True)  # drop all rows that have any NaN values
+    demographic_df.to_csv(os.path.join(PKL_PATH, 'SA_GT_df.csv'))
     return 1
 
 
-#6. Define the main function (if exsists)
+# 6. Define the main function (if exsists)
 if __name__ == '__main__':
     MOBAKU_FOLDER_PATH = r'C:\Users\lipeiran\OneDrive - The University of Tokyo\Mobility_Behaviour_Analysis_COVID19\00_cencus_data\\'
     MOBAKU_PKL_FOLDER_PATH = r'C:\Users\lipeiran\OneDrive - The University of Tokyo\Python_Script\Fast_Labeling\FastLabelingProject_for_System\assets\mobaku_demographic_pkl/'
     MOBAKU_DEMOGRAPHIC_PATH = MOBAKU_FOLDER_PATH + '02_性年代(10歳階).csv'
-    #transMobaku2Shape(MOBAKU_FOLDER_PATH,OUTPUT_FOLDER_PATH)
-    #transMobaku2PKL(MOBAKU_DEMOGRAPHIC_PATH, MOBAKU_PKL_FOLDER_PATH)
+    # transMobaku2Shape(MOBAKU_FOLDER_PATH,OUTPUT_FOLDER_PATH)
+    # transMobaku2PKL(MOBAKU_DEMOGRAPHIC_PATH, MOBAKU_PKL_FOLDER_PATH)
     getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week')
     generateCsvSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week')

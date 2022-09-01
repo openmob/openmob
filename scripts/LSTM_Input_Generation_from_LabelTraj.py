@@ -7,36 +7,14 @@
 'This file is for trajectory pre-processing'
 __author__ = 'Li Peiran'
 
-# 3.Import the modules.
-import os
-import sys
-import numpy as np
-import pandas as pd
+
 from tqdm import tqdm
-#from tqdm.notebook import tqdm
-from skmob.measures.individual import home_location
-import multiprocessing as mp
-import threading as td
-import time
-import pickle
-import jismesh.utils as ju
 import pandas as pd
 from pandas import DataFrame
-from scipy import sparse
-# For NN
-import torch
-import torch.nn.functional as F  # 激励函数都在这
-from torch.autograd import Variable
-import torch.nn as nn
-import scipy.stats
-from pyswarm import pso
-from operator import itemgetter
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # 空间三维画图
-from utils import MiniTools
-import datetime
-
+import minitools
+import pandas as pd
+from pandas import DataFrame
+from tqdm import tqdm
 
 # 4.Define the global variables. (if exists)
 SAVE_PATH = '../assets/LSTM_None/'
@@ -72,7 +50,7 @@ GENE_MODE = 'Re_Calculate'
 
 ORI_LP_FOLDER = r'F:\life_pattern_detect\great_tokyo\2_great_tokyo_labeled_home_work_order'
 lp_file_list = []
-MiniTools.getFilePath(ORI_LP_FOLDER, lp_file_list, dir_list=[], target_ext='.csv')
+minitools.getFilePath(ORI_LP_FOLDER, lp_file_list, dir_list=[], target_ext='.csv')
 
 if GENE_MODE == 'Re_Calculate':
     total_lp_code_list = []
