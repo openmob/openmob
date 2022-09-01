@@ -15,6 +15,7 @@ from tqdm import tqdm
 import minitools
 import numpy as np
 
+test
 
 class InputGenerationFromLabelTraj:
     def __init__(self, lp_code_file, lp_format_output_file, gene_mode, week_holiday_mode, ori_lp_folder):
