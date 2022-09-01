@@ -8,24 +8,14 @@
 __author__ = 'Li Peiran'
 
 # 3.Import the modules.
-import os
 import sys
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from skmob.measures.individual import home_location
-import multiprocessing as mp
-import threading as td
-import time
-import pickle
-import jismesh.utils as ju
-import pandas as pd
 from pandas import DataFrame
 from scipy import sparse
+from tqdm import tqdm
 
 # Load the function file in another file
 sys.path.append('./')
-import demographic_processing
 
 
 # 4.Define the global variables. (if exists)
@@ -109,4 +99,4 @@ def selectPartID(self, sampling_rate=0.5):
     self.S_train_matrix_dict = S_filter_matrix_dict
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':

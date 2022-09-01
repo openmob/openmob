@@ -1,7 +1,6 @@
-import pandas as pd
-import csv
 import numpy as np
-import os
+import pandas as pd
+
 
 def get_traj(filename):#path,
     # time = 0

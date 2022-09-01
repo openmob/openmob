@@ -7,34 +7,18 @@
 'This file is for trajectory pre-processing'
 __author__ = 'Li Peiran'
 
-# 3.Import the modules.
-import os
-import sys
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from skmob.measures.individual import home_location
+import collections
 import multiprocessing as mp
-import threading as td
+import os
 import time
-import pickle
 import jismesh.utils as ju
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from scipy import sparse
-from utils import MiniTools
-import collections
-# Load the function file in another file
-#sys.path.append('../')
+from tqdm import tqdm
+import minitools
 import demographic_processing
-
-
-# 4.Define the global variables. (if exists)
-
-# 5.Define the class (if exsists)
-
-# 6.Define the function (if exsists)
-
 
 def segmentedTraj2HourMesh(INPUT_FILE_PATH, OUT_PUT_FOLDER_PATH, filter_period=[]):
     try:
@@ -260,7 +244,7 @@ def generateMatrixSfromHourMeshTraj(mobaku_hour_mesh_str_key, INPUT_HOUR_MESH_TR
         S-Matrix for a set of users
     """
     # If save_folder_path does not exist, create one
-    MiniTools.ifFolderExistThenCreate(SAVE_FILE_PATH)
+    minitools.ifFolderExistThenCreate(SAVE_FILE_PATH)
     # Get the age/gender information from hour stay data
     s_vector_list = []
     s_vector_path_list = []
@@ -275,7 +259,7 @@ def generateMatrixSfromHourMeshTraj(mobaku_hour_mesh_str_key, INPUT_HOUR_MESH_TR
     elif computing_mode == 'add':
         #Get the current vectorS file list
         current_vector_list = []
-        MiniTools.getFilePath(SAVE_FILE_PATH,file_list=current_vector_list,target_ext='.npz')
+        minitools.getFilePath(SAVE_FILE_PATH,file_list=current_vector_list,target_ext='.npz')
         current_vector_list = [os.path.basename(x) for x in current_vector_list]
         for i in tqdm(range(len(INPUT_HOUR_MESH_TRAJ_FILE_PATH_LIST))):
             uid = os.path.basename(INPUT_HOUR_MESH_TRAJ_FILE_PATH_LIST[i]).split('.')[0]
@@ -314,7 +298,7 @@ if __name__ == '__main__':
     TRAJ_PATH = r'..\assets\Traj'
     folder_list = []
     total_traj_file_list = []
-    MiniTools.getFilePath(TRAJ_PATH, total_traj_file_list, folder_list, '.csv')
+    minitools.getFilePath(TRAJ_PATH, total_traj_file_list, folder_list, '.csv')
     total_ids = [x.split('\\')[-1].split('.')[0] for x in total_traj_file_list]
 
     # 2. The life-pattern people id (those who are need to be labeled)should be given
@@ -329,7 +313,7 @@ if __name__ == '__main__':
     # 3. Preprocess the traj data for S-matrix generation (the next step)
     #PROCESSED_TRAJ_PATH = r'F:\TrajData\2013\2013_traj_hour_meshcode_20130601~20130701/'
     PROCESSED_TRAJ_PATH = r'..\assets\Processed_Traj\\'#It's only for result save-path, you can assign it win anywhere
-    MiniTools.ifFolderExistThenCreate(PROCESSED_TRAJ_PATH)
+    minitools.ifFolderExistThenCreate(PROCESSED_TRAJ_PATH)
     #calcute the input filter time stamp
     start_str_time = "2013-06-01 00:00:00"
     end_str_time = "2013-06-14 00:00:00"
@@ -346,16 +330,16 @@ if __name__ == '__main__':
     MOBAKU_DEMOGRAPHIC_PATH = MOBAKU_FOLDER_PATH + '02_性年代(10歳階).csv'
     # transMobaku2Shape(MOBAKU_FOLDER_PATH,OUTPUT_FOLDER_PATH)
     # transMobaku2PKL(MOBAKU_DEMOGRAPHIC_PATH, MOBAKU_PKL_FOLDER_PATH)
-    demographic_df = MobakuProcessing.getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week')
+    demographic_df = demographic_processing.getSAfromMobakuPkl(MOBAKU_PKL_FOLDER_PATH, load_mode='by_day_of_week')
     str_key = np.array([str(x[0]) + str(x[1]) + str(x[2]) for x in demographic_df.index.values])
 
     # 5. Generate the Matrix S
     need_labeled_traj_file_afterprocessing_list = []
-    MiniTools.getFilePath(PROCESSED_TRAJ_PATH, need_labeled_traj_file_afterprocessing_list, dir_list=[], target_ext='.csv')
+    minitools.getFilePath(PROCESSED_TRAJ_PATH, need_labeled_traj_file_afterprocessing_list, dir_list=[], target_ext='.csv')
     xyz_ids = [os.path.basename(x).split('.')[0] for x in need_labeled_traj_file_afterprocessing_list]
     #S_Matrix_SAVE_FILE_PATH = '../assets/S-matrix-20130601_20130701/'
     S_Matrix_SAVE_FILE_PATH = '../assets/S-matrix-test/'
-    MiniTools.ifFolderExistThenCreate(S_Matrix_SAVE_FILE_PATH)
+    minitools.ifFolderExistThenCreate(S_Matrix_SAVE_FILE_PATH)
     generateMatrixSfromHourMeshTraj(mobaku_hour_mesh_str_key=str_key,
                                     INPUT_HOUR_MESH_TRAJ_FILE_PATH_LIST=need_labeled_traj_file_afterprocessing_list,
                                     user_ids_list=xyz_ids,
