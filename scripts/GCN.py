@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv
-from torch_geometric.datasets import Planetoid
 
 
 class GCN(torch.nn.Module):
