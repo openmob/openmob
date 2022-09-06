@@ -1,8 +1,5 @@
-# For NN
-import torch
-import torch.nn.functional as F  # 激励函数都在这
-from torch.autograd import Variable
 import torch.nn as nn
+
 
 class Generator(nn.Module):
     def __init__(self, z_dim, ):
@@ -11,13 +8,10 @@ class Generator(nn.Module):
         self.z_dim = z_dim
         net = []
 
-        # 1:设定每次反卷积的输入和输出通道数等
-        #   卷积核尺寸固定为4，反卷积输出为“SAME”模式
         channels_in = [self.z_dim, 512, 256, 128, 64]
         channels_out = [512, 256, 128, 64, 1]
         active = ["R", "R", "R", "R", "tanh"]
         stride = [1, 2, 2, 2, 2]
-        #stride = [1, 1, 1, 1, 1]
         padding = [0, 1, 1, 1, 1]
         for i in range(len(channels_in)):
             net.append(nn.ConvTranspose2d(in_channels=channels_in[i], out_channels=channels_out[i],
@@ -47,18 +41,13 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self):
-        """
-        initialize
-
-        :param image_size: tuple (3, h, w)
-        """
         super().__init__()
 
         net = []
-        # 1:预先定义
+
         channels_in = [1, 64, 128, 256, 512]
         channels_out = [64, 128, 256, 512, 1]
-        #padding = [1, 1, 1, 1, 0]
+
         padding = [1, 1, 1, 1, 1]
         active = ["LR", "LR", "LR", "LR", "sigmoid"]
         for i in range(len(channels_in)):
