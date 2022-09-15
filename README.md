@@ -25,5 +25,5 @@ Dou Huang: <br />
 OpenMOB is released under the MIT license. Please refer to [LICENSES](LICENSE) for the careful check.
 
 ## Projects in OpenLab
-* **[OpenMob](https://github.com/openmob/openmob)**: This project is currently under development. We will continuously update this project.\
+* **[OpenMob](https://github.com/openmob/openmob)**: This project is currently under development. We will continuously update this project.
 * **[OpenPV](https://github.com/OpenSolarPV/OpenPV)**: an open source toolbox for solar photovoltaics semantic segmentation.
