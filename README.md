@@ -13,6 +13,7 @@ This project contains several preprocessing tools built by python:
 * open travel mode data. For more details, please refer to this [paper](https://arxiv.org/pdf/2109.08527.pdf).
 
 ## Usage
+This project is built from Python=3.8.4.\
 Please refer to the [requirements.txt](requirements.txt) for the necessary python library.
 
 ## Authors and acknowledgment
