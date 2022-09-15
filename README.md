@@ -8,6 +8,8 @@ This project contains several preprocessing tools built by python:
 * Pseudo life pattern to the spatial sequence of trips.
 * Map-matching as post-processing of GPS trajectory.
 
+## datasets
+* NYC and Tokyo Check-in Dataset. For more details, please refer to [Foursquare Dataset](https://sites.google.com/site/yangdingqi/home/foursquare-dataset).
 
 ## Usage
 Please refer to the [requirements.txt](requirements.txt) for the necessary python library.
