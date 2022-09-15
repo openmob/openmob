@@ -10,6 +10,7 @@ This project contains several preprocessing tools built by python:
 
 ## datasets
 * NYC and Tokyo Check-in Dataset. For more details, please refer to [Foursquare Dataset](https://sites.google.com/site/yangdingqi/home/foursquare-dataset).
+* open travel mode data. For more details, please refer to this [paper](https://arxiv.org/pdf/2109.08527.pdf).
 
 ## Usage
 Please refer to the [requirements.txt](requirements.txt) for the necessary python library.
