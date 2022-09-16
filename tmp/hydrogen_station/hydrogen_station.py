@@ -69,7 +69,7 @@ class hydrogen_station:
         file = [x for x in path_2011 if os.stat(x).st_size != 0]
 
         b = file.split("\\")[-1]
-        data = pd.read_csv(path_2011, header=None, usecols=[1, 3, 10, 11, 16])
+        data = pd.read_csv(file, header=None, usecols=[1, 3, 10, 11, 16])
         data.columns = ["date", "mode", "start_time", "end_time", "trajectory"]
         data = data[data["mode"] == "CAR"]
         if len(data) == 0:
