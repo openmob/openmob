@@ -1,13 +1,14 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import datetime
-import sys
-import os
 import multiprocessing
-import pywt
-import natsort
+import os
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from pykalman import KalmanFilter
+
+R = 6371008
 
 class brake:
     def __init__(self,
