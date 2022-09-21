@@ -266,6 +266,7 @@ class brake:
     def calculate_dis(self, O_lat, O_lon, D_lat, D_lon):
         a = np.radians(np.asarray(O_lon, dtype=np.float64) - np.asarray(D_lon, dtype=np.float64))
         b = np.radians(np.asarray(O_lat, dtype=np.float64) - np.asarray(D_lat, dtype=np.float64))
+        R = 6371008
         dis = 2 * R * np.arcsin(np.sqrt(np.sin(b/2) ** 2 + np.cos(np.radians(np.asarray(O_lat, dtype=np.float64))) * np.cos(np.radians(np.asarray(D_lat, dtype=np.float64))) * np.sin(a/2) ** 2))
         return dis
 
