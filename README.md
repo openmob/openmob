@@ -9,9 +9,31 @@ This project contains several preprocessing tools built by python:
 * Pseudo life pattern to the spatial sequence of trips.
 * Map-matching as post-processing of GPS trajectory.
 
-## datasets
+## Project structure
+The following is the structure of this project.
+```
+openmob
+├── datasets
+│   ├── dataset_tsmc2014
+│   ├── gis
+│   ├── open_travel_mode_data
+│   └── ...
+├── scripts
+│   ├── 1.py
+│   ├── 2.py
+│   ├── 3.py
+│   └── ...
+└── functions
+    ├── stay_point_detection
+    ├── life_pattern_processing
+    ├── demographic_processing
+    └── ...
+```
+
+## Datasets
 * NYC and Tokyo Check-in Dataset. For more details, please refer to [Foursquare Dataset](https://sites.google.com/site/yangdingqi/home/foursquare-dataset).
-* open travel mode data. For more details, please refer to this [paper](https://arxiv.org/pdf/2109.08527.pdf).
+* Open Travel Mode Data. For more details, please refer to this [paper](https://arxiv.org/pdf/2109.08527.pdf).
+* GIS data. Collected from 
 
 ## Usage
 This project is built from Python=3.8.4.\
