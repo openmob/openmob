@@ -36,6 +36,10 @@ class hydrogen_station:
             self.path_2 = self.generate_to_do_filepath(filepath = self.dir, processed_file = self.processed_file2)
             with multiprocessing.Pool(24) as p:
                 list(tqdm.tqdm(p.imap_unordered(self.function_1_1, self.path_2011), total=len(self.path_2011)))
+
+            self.yongdi = gpd.GeoDataFrame.from_file(self.working_dir + r"\mapping\yongdi_new.shp", encoding="UTF-8")
+            self.yongdi_a = self.yongdi.copy()
+            self.yongdi_a = self.yongdi_a.to_crs(epsg=3395)
             with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
                 list(tqdm.tqdm(p.imap_unordered(self.function_2_1, self.path_2), total=len(self.path_2)))
 
@@ -99,14 +103,10 @@ class hydrogen_station:
         return
 
     def geo_function(self, x):
-        yongdi = gpd.GeoDataFrame.from_file(self.working_dir + r"\mapping\yongdi_new.shp", encoding="UTF-8")
-
-        yongdi_a = yongdi.copy()
-        yongdi_a = yongdi_a.to_crs(epsg=3395)
-        matched_yongdi = yongdi[yongdi["geometry"].contains(x.at["geometry"])]
+        matched_yongdi = self.yongdi[self.yongdi["geometry"].contains(x.at["geometry"])]
         if len(matched_yongdi) == 0:
-            yongdi_a["distance"] = yongdi_a["geometry"].apply(lambda y: y.boundary.distance(x.at["geometry"]))
-            area_code = yongdi_a.loc[yongdi_a["distance"].idxmin(), "area_code"]
+            self.yongdi_a["distance"] = self.yongdi_a["geometry"].apply(lambda y: y.boundary.distance(x.at["geometry"]))
+            area_code = self.yongdi_a.loc[self.yongdi_a["distance"].idxmin(), "area_code"]
         else:
             area_code = matched_yongdi.loc[matched_yongdi.index[0], "area_code"]
         return area_code
