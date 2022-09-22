@@ -70,6 +70,7 @@ def stay_point_detection(traj, time_threshold=10, distance_threshold=200):
                 s.loc[0, 'lat'] = traj.loc[ix:jx, 'lat'].mean()
                 s.loc[0, 'arrival_time'] = traj.loc[ix, 'timestamp']
                 s.loc[0, 'departure_time'] = traj.loc[jx, 'timestamp']
+                s.loc[0, 'venue_name'] = traj.loc[ix, 'venue_name']
                 sp_ = pd.concat([sp_, s], axis=0)
             break
 
@@ -81,6 +82,7 @@ def stay_point_detection(traj, time_threshold=10, distance_threshold=200):
             s.loc[0, 'lat'] = traj.loc[ix:jx, 'lat'].mean()
             s.loc[0, 'arrival_time'] = traj.loc[ix, 'timestamp']
             s.loc[0, 'departure_time'] = traj.loc[jx, 'timestamp']
+            s.loc[0, 'venue_name'] = traj.loc[ix, 'venue_name']
             sp_ = pd.concat([sp_, s], axis=0)
     return sp_
 
