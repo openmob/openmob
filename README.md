@@ -2,6 +2,7 @@
 # Open Urban Mobility Toolkit (OpenMob)
 
 This project contains several preprocessing tools built by python:
+* Basic function to detect stay points given GPS trajectory datasets.
 * Building life pattern tree from raw GPS trajectory data.
 * Preprocessing tools are used for the generation model of the "pseudo life pattern." 
 * Essential preprocessing tools for converting raw GPS data to grid-based data format.
