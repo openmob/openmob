@@ -3,7 +3,6 @@
 
 This project contains several preprocessing tools built by python:
 * Basic function to detect stay points given GPS trajectory datasets.
-<iframe src="/Users/huangdou/PycharmProjects/openmob_public/openmob/figures/stay_points.html" height="500" width="500"></iframe>
 * Building life pattern tree from raw GPS trajectory data.
 * Preprocessing tools are used for the generation model of the "pseudo life pattern." 
 * Essential preprocessing tools for converting raw GPS data to grid-based data format.
