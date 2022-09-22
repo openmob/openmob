@@ -21,9 +21,9 @@ openmob
 │   ├── open_travel_mode_data
 │   └── ...
 ├── scripts
-│   ├── 1.py
-│   ├── 2.py
-│   ├── 3.py
+│   ├── tool_1.py
+│   ├── tool_2.py
+│   ├── tool_3.py
 │   └── ...
 └── functions
     ├── stay_point_detection
