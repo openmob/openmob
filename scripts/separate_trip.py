@@ -3,7 +3,7 @@ import pandas as pd
 import sys
 import time
 
-sys.path.insert(1, '../../scripts/')
+sys.path.insert(1, '/')
 from stay_point_detection import *
 
 
