@@ -3,10 +3,11 @@ import pandas as pd
 import sys
 import time
 import os
-
-sys.path.insert(1, '../../scripts/')
-print(os.getcwd())
-from stay_point_detection import *
+# from os.path import abspath, dirname
+# os.chdir(dirname(abspath(__file__)))
+# sys.path.insert(0, '../../scripts/')
+# print(os.getcwd())
+from openmob.scripts.stay_point_detection import *
 
 
 def load_data_tsmc(input_file):
