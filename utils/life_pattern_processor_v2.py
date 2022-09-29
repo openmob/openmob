@@ -15,6 +15,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import warnings
+from openmob.utils import data_loader
 
 warnings.filterwarnings('ignore')
 matplotlib.use('Agg')
@@ -68,38 +69,39 @@ class LifePatternProcessor:
         great_tokyo_map = gpd.GeoDataFrame.from_file(self.map_file)
         if great_tokyo_map.crs is None:
             great_tokyo_map.crs = 'epsg:4326'
-        data = pd.read_csv(self.raw_gps_file, header=None)
+        # data = pd.read_csv(self.raw_gps_file, header=None)
+        data = data_loader.load_tsmc2014(self.raw_gps_file)
         self.user_id = data.iloc[0, 0]
         self.user_id_8 = str(self.user_id).zfill(8)
         if pd.isnull(self.user_id):
             print('user_id is null...')
             return
         else:
-            stay_data = data[[0, 1, 3, 4, 10, 11, 16]][(data[3] == 'STAY')]
-            if stay_data.empty is True:
+            # stay_data = data
+            if data.empty is True:
                 print('stay data is empty...')
                 return
-            elif stay_data.empty is False:
-                spl_data = stay_data[16].str.split("|", expand=True)
-                stay_data2 = pd.concat([stay_data, spl_data], axis=1)
-                stay_data2.columns = ['user_id', 'day', 'mode', 'mode2', 'start_time', 'end_time', 'trajectory',
-                                      'number',
-                                      'time', 'latitude', 'longitude']
-                stay_data2 = stay_data2.drop(['trajectory', 'number'], axis=1)
-                stay_data2['start_time'] = pd.to_datetime(stay_data2['start_time'])
-                stay_data20 = stay_data2.sort_values(by='start_time')
+            elif data.empty is False:
+                # spl_data = stay_data[16].str.split("|", expand=True)
+                # stay_data2 = pd.concat([stay_data, spl_data], axis=1)
+                # stay_data2.columns = ['user_id', 'day', 'mode', 'mode2', 'start_time', 'end_time', 'trajectory',
+                #                       'number',
+                #                       'time', 'latitude', 'longitude']
+                # stay_data2 = stay_data2.drop(['trajectory', 'number'], axis=1)
+                data['timestamp'] = pd.to_datetime(data['timestamp'])
+                stay_data20 = data.sort_values(by='timestamp')
                 stay_data20['longitude'] = stay_data20['longitude'].astype(float)
                 stay_data20['latitude'] = stay_data20['latitude'].astype(float)
                 stay_data3 = stay_data20[
                     (stay_data20['longitude'] >= 125) & (stay_data20['latitude'] >= 20)]  # 不在日本境内的被剔除
                 stay_data3 = stay_data3.reset_index(drop=True)
-                stay_data3['hour'] = pd.to_datetime(stay_data3['time']).dt.hour
-                stay_data3['weekday'] = pd.to_datetime(stay_data3['time']).dt.weekday
+                stay_data3['hour'] = pd.to_datetime(stay_data3['timestamp']).dt.hour
+                stay_data3['weekday'] = pd.to_datetime(stay_data3['timestamp']).dt.weekday
                 stay_data3['weekday'] = stay_data3['weekday'] + 1
-                stay_data3['time_period'] = pd.to_datetime(stay_data3['end_time']) - pd.to_datetime(
-                    stay_data3['start_time'])
-                stay_data3['time_period_second'] = (
-                        pd.to_datetime(stay_data3['end_time']) - pd.to_datetime(stay_data3['start_time'])).dt.seconds
+                # stay_data3['time_period'] = pd.to_datetime(stay_data3['end_time']) - pd.to_datetime(
+                #     stay_data3['start_time'])
+                # stay_data3['time_period_second'] = (
+                #         pd.to_datetime(stay_data3['end_time']) - pd.to_datetime(stay_data3['start_time'])).dt.seconds
                 geometry = [Point(xy) for xy in zip(stay_data3['longitude'], stay_data3['latitude'])]
                 stay_data4 = gpd.GeoDataFrame(stay_data3, crs="epsg:4326", geometry=geometry)
                 stay_data4.crs = 'epsg:4326'
@@ -132,6 +134,7 @@ class LifePatternProcessor:
         if self.raw_gps_file is None:
             self.raw_gps_file = raw_gps_file
         df0 = self.select_great_tokyo(self.raw_gps_file)
+        # df0 = data_loader.load_tsmc2014(self.raw_gps_file)
         if df0 is None:
             print('No stay data is given...')
             return
@@ -549,7 +552,13 @@ class LifePatternProcessor:
 
         if self.raw_gps_folder is None:
             print('Loading sample ZDC GPS folder...')
-            self.raw_gps_folder = '../sample/'
+            self.raw_gps_folder = '../functions/life_pattern_processing/individual_traj/'
+
+        if os.path.exists(self.raw_gps_folder):
+            os.mkdir(self.raw_gps_folder)
+
+            self.raw_tsmc2014 = '../datasets/dataset_tsmc2014/dataset_TSMC2014_NYC.csv'
+            data = data_loader.load_tsmc2014(self.raw_tsmc2014)
 
         filename_list = glob.glob(self.raw_gps_folder + '*.csv')
 
@@ -1175,4 +1184,8 @@ class LifePatternProcessor:
         join_point = join_point.fillna(-1)
         if save_results:
             join_point.to_csv('./11_demo_7_group_HWO_join_area2.csv', index=False)
+
+
+if __name__ == '__main__':
+    proc = LifePatternProcessor(initialize=True)
 
