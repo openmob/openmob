@@ -11,9 +11,9 @@ def load_data_tsmc(input_file):
     data.columns = ['user_id', 'venue_id', 'venue_category_id', 'venue_name', 'lat', 'lon', 'time_zone_offset',
                     'utc_time']
     return data
-def check_output_folder():
-    if not os.path.exists('./stay_points/'):
-        os.mkdir('./stay_points/')
+def check_output_folder(output_folder):
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
     else:
         print('output folder existed...')
 
@@ -22,8 +22,8 @@ def timestamp_calc(line):
     return timestamp
 
 
-def separate_trip(input_file, length):
-    check_output_folder()
+def separate_trip(input_file, output_folder, length):
+    check_output_folder(output_folder)
     data = load_data_tsmc(input_file)
     total_user_number = len(data.user_id.unique())
     if length >= total_user_number:
@@ -34,7 +34,7 @@ def separate_trip(input_file, length):
         tmp = pd.concat([tmp, timestamp.rename('timestamp')], axis=1)
         # tmp.to_csv('./{}.csv'.format(user_id_), index=False)
         tmp = stay_point_detection_process(tmp)
-        tmp.to_csv('./stay_points/{}.csv'.format(user_id_), index=False)
+        tmp.to_csv(output_folder + '{}.csv'.format(user_id_), index=False)
     return
 
 
@@ -53,11 +53,14 @@ def stay_point_detection_process(data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Args for separating trips from GPS trajectory datasets.')
-    parser.add_argument('--input_file', '-f',
+    parser.add_argument('--input_file', '-if',
                         default='../../datasets/dataset_tsmc2014/dataset_TSMC2014_TKY.txt',
                         help='file of GPS trajectory datasets.')
     parser.add_argument('--length', '-l', default=10, type=int,
                         help='desired number of output separate files')
+    parser.add_argument('--output_folder', '-of',
+                        default='./stay_points/',
+                        help='file of GPS trajectory datasets.')
     args = parser.parse_args()
 
-    separate_trip(input_file=args.input_file, length=args.length)
+    separate_trip(input_file=args.input_file, length=args.length, output_folder=args.output_folder)
