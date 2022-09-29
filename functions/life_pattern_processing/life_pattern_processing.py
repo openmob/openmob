@@ -1,4 +1,4 @@
-from openmob.scripts.life_pattern_processor_base import *
+from openmob.utils.life_pattern_processor_base import *
 import os
 
 

@@ -5,9 +5,9 @@ import time
 import os
 # from os.path import abspath, dirname
 # os.chdir(dirname(abspath(__file__)))
-# sys.path.insert(0, '../../scripts/')
+# sys.path.insert(0, '../../utils/')
 # print(os.getcwd())
-from openmob.scripts.stay_point_detection import *
+from openmob.utils.stay_point_detection import *
 
 
 def load_data_tsmc(input_file):
