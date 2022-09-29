@@ -23,7 +23,7 @@ matplotlib.use('Agg')
 class LifePatternProcessor:
 
     def __init__(self,
-                 raw_gps_folder='../../datasets/separate_trip/',
+                 raw_gps_folder='../../datasets/dataset_tsmc2014/',
                  map_file='../../datasets/gis/greater_tokyo_area_dissolve.shp',
                  distance_for_eps=0.03,
                  dbscan_min_samples=10,
