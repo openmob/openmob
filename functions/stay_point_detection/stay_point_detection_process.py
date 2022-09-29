@@ -3,10 +3,6 @@ import pandas as pd
 import sys
 import time
 import os
-# from os.path import abspath, dirname
-# os.chdir(dirname(abspath(__file__)))
-# sys.path.insert(0, '../../utils/')
-# print(os.getcwd())
 from openmob.utils.stay_point_detection import *
 
 
