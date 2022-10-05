@@ -1,21 +1,13 @@
-import glob
 import os.path
-from sklearn.decomposition import NMF
+import warnings
+from japan_holidays import HolidayDataset
+import geopandas as gpd
+import matplotlib
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
-import sklearn.cluster
-import joblib
-from scipy.optimize import least_squares
-from tqdm import tqdm
-import jismesh.utils as ju
-import matplotlib
-from datetime import datetime
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import warnings
+
 from openmob.utils import data_loader
 
 warnings.filterwarnings('ignore')
@@ -24,27 +16,18 @@ matplotlib.use('Agg')
 
 class LifePatternProcessor:
 
-    def __init__(self,
-                 raw_gps_folder='../datasets/dataset_tsmc2014/',
-                 map_file='../datasets/gis/greater_tokyo_area_dissolve.shp',
-                 distance_for_eps=0.03,
-                 dbscan_min_samples=10,
-                 initialize=False,
-                 support_tree_folder='./support_tree/',
-                 NMF_results_folder='./NMF_results/',
-                 clustering_results_folder='./clustering_results/'):
-
-        self.user_id_8 = None
-        self.user_id = None
-        self.raw_gps_folder = raw_gps_folder
-        self.distance_for_eps = distance_for_eps
-        self.dbscan_min_samples = dbscan_min_samples
+    def __init__(self, map_file='../datasets/gis/greater_tokyo_area_dissolve.shp'):
+        self.kept_data = None
+        self.user_id_list = None
         self.raw_gps_file = None
+        self.dbscan_min_samples = 10
+        self.distance_for_eps = 0.03
         self.map_file = map_file
-        self.support_tree_folder = support_tree_folder
-        self.NMF_results_folder = NMF_results_folder
-        self.clustering_results_folder = clustering_results_folder
-        self.initialize = initialize
+        self.clustering_results_folder = None
+        self.support_tree_folder = None
+        self.raw_gps_folder = None
+        self.NMF_results_folder = None
+        self.initialize = False
 
         if self.initialize:
             self.create_folder()
@@ -64,7 +47,6 @@ class LifePatternProcessor:
             os.mkdir(self.clustering_results_folder)
         return
 
-
     def select_great_tokyo(self, raw_gps_file=None):
         if raw_gps_file is not None:
             self.raw_gps_file = raw_gps_file
@@ -77,31 +59,27 @@ class LifePatternProcessor:
             print('user_id is null...')
             return
         else:
-            stay_data = data[['user_id', 'lat', 'lon', 'arrival_time', 'departure_time']]
-            if len(stay_data) == 0:
+            stay_data_ = data[['user_id', 'lat', 'lon', 'arrival_time', 'departure_time']]
+            if len(stay_data_) == 0:
                 print('stay data is empty...')
                 return
             else:
-                stay_data['arrival_time'] = pd.to_datetime(stay_data.arrival_time)
-                stay_data['departure_time'] = pd.to_datetime(stay_data.departure_time)
-                stay_data20 = stay_data.sort_values(by=['user_id', 'arrival_time'])
+                stay_data_['arrival_time'] = pd.to_datetime(stay_data_.arrival_time)
+                stay_data_['departure_time'] = pd.to_datetime(stay_data_.departure_time)
+                stay_data20 = stay_data_.sort_values(by=['user_id', 'arrival_time'])
                 stay_data20['lon'] = stay_data20['lon'].astype(float)
                 stay_data20['lat'] = stay_data20['lat'].astype(float)
-                stay_data3 = stay_data20[
-                    (stay_data20['lon'] >= 125) & (stay_data20['lat'] >= 20)]  # 不在日本境内的被剔除
+                stay_data3 = stay_data20[(stay_data20['lon'] >= 125) & (stay_data20['lat'] >= 20)]  # 不在日本境内的被剔除
                 stay_data3 = stay_data3.reset_index(drop=True)
                 stay_data3['hour'] = pd.to_datetime(stay_data3['arrival_time']).dt.hour
                 stay_data3['weekday'] = pd.to_datetime(stay_data3['arrival_time']).dt.weekday
                 stay_data3['weekday'] = stay_data3['weekday'] + 1
-                stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(
-                    stay_data3['arrival_time'])
-                stay_data3['time_period_second'] = (
-                        pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])).dt.seconds
+                stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])
+                stay_data3['time_period_second'] = (pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])).dt.seconds
                 geometry = [Point(xy) for xy in zip(stay_data3['lon'], stay_data3['lat'])]
                 stay_data4 = gpd.GeoDataFrame(stay_data3, crs="epsg:4326", geometry=geometry)
                 stay_data4.crs = 'epsg:4326'
-                stay_data5 = gpd.sjoin(stay_data4, great_tokyo_map, how='left', predicate='intersects', lsuffix='left',
-                                       rsuffix='right')
+                stay_data5 = gpd.sjoin(stay_data4, great_tokyo_map, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
                 stay_data6 = stay_data5.reset_index(drop=True)
                 stay_data6 = stay_data6.drop(['geometry', 'index_right'], axis=1)
                 stay_data6['within'] = stay_data6['within'].fillna(-1)
@@ -113,48 +91,46 @@ class LifePatternProcessor:
                     stay_data6_tmp = stay_data6[stay_data6.user_id == ids]
                     tokyo_stay_tmp = tokyo_stay[tokyo_stay.user_id == ids]
                     if len(stay_data6_tmp) != 0:
-                        if (len(stay_data6_tmp) > 10) & (len(tokyo_stay_tmp) >= 4) & ((len(tokyo_stay_tmp) / len(stay_data6_tmp)) >= 0.2):
+                        if (len(stay_data6_tmp) > 10) & (len(tokyo_stay_tmp) >= 4) & (
+                                (len(tokyo_stay_tmp) / len(stay_data6_tmp)) >= 0.2):
                             keep_ids.append(ids)
                         else:
                             continue
                     else:
                         continue
                 print('total users: {}; kept users: {}'.format(len(self.user_id_list), len(keep_ids)))
-                return stay_data6[stay_data6.user_id.isin(keep_ids)]
+                self.kept_data = stay_data6[stay_data6.user_id.isin(keep_ids)]
+                return self.kept_data
 
+    def detect_home_work(self, raw_gps_file=None):
 
-    def detect_home_work(self, raw_gps_file):
-
-        if self.raw_gps_file is None:
+        if raw_gps_file is not None:
             self.raw_gps_file = raw_gps_file
-        df0 = self.select_great_tokyo(self.raw_gps_file)
-        if df0 is None:
+        df = self.select_great_tokyo(self.raw_gps_file)
+        if df is None:
             print('No stay data is given...')
             return
 
-        df000 = df0.copy(deep=False)
-
-        df000['start_time'] = pd.to_datetime(df0['start_time'])
-        df = df000.sort_values(by='start_time')
+        df['arrival_time'] = pd.to_datetime(df['arrival_time'])
+        df['departure_time'] = pd.to_datetime(df['departure_time'])
+        df['day'] = df.arrival_time.dt.day
+        df = df.sort_values(by=['user_id', 'arrival_time'])
         df = df.reset_index(drop=True)
         row_id = df.index.tolist()
-        df['row_ID'] = pd.DataFrame(row_id)[0]
-        df['end_hour'] = pd.to_datetime(df['end_time']).dt.hour
+        df['row_id'] = pd.DataFrame(row_id)[0]
+        df['departure_hour'] = df['departure_time'].dt.hour
         df['holiday'] = 0
         df.loc[(df['weekday'] == 6) | (df['weekday'] == 7), 'holiday'] = 1
-        df.loc[(df['day'] == '2013-01-01') | (df['day'] == '2013-01-14') | (df['day'] == '2013-02-11') | (
-                df['day'] == '2013-03-20') | (df['day'] == '2013-04-29') | (df['day'] == '2013-05-03') | (
-                       df['day'] == '2013-05-04') | (df['day'] == '2013-05-05') | (df['day'] == '2013-07-15') | (
-                       df['day'] == '2013-09-16') | (df['day'] == '2013-09-23') | (df['day'] == '2013-10-14') | (
-                       df['day'] == '2013-11-03') | (df['day'] == '2013-11-23') | (
-                       df['day'] == '2013-12-23'), 'holiday'] = 1
+        japan_holiday = HolidayDataset.HOLIDAYS.keys()
+        df.loc[df.arrival_time.dt.date.isin(japan_holiday), 'holiday'] = 1
 
         #  DBSCAN cluster for all records ##################################################################
 
         all_df = df.copy()
-        all_df_point = all_df[["longitude", "latitude"]]
-        all_df_for_dbsc = all_df_point.to_numpy( copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
-        all_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371), min_samples=self.dbscan_min_samples, algorithm='ball_tree',
+        all_df_point = all_df[["lon", "lat"]]
+        all_df_for_dbsc = all_df_point.to_numpy(copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
+        all_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371), min_samples=self.dbscan_min_samples,
+                          algorithm='ball_tree',
                           metric='haversine').fit(np.radians(all_df_for_dbsc))
         all_labels = all_dbsc.labels_
         all_n_clusters_ = len(set(all_labels)) - (1 if -1 in all_labels else 0)
@@ -167,25 +143,24 @@ class LifePatternProcessor:
         home_df = df.copy()
         home_df1 = home_df[home_df['holiday'] != 1]
         home_df3 = home_df1[
-            ((home_df1['hour'] >= 20) & (home_df1['end_hour'] >= 23)) | (home_df1['hour'] <= 4)]  # 粗选home
+            ((home_df1['hour'] >= 20) & (home_df1['departure_hour'] >= 23)) | (home_df1['hour'] <= 4)]  # 粗选home
         # home_df3 = home_df1[(home_df1['hour'] >= 20)  | (home_df1['hour'] <= 4)]   # for order
         home_df4 = home_df3[home_df3['time_period_second'] >= 5400]  # 粗选home
         if home_df4.empty is False:
 
             home_candidate = home_df4.reset_index(drop=True)
-            home_candidate_point = home_candidate[["longitude", "latitude"]]
-            home_candidate_for_dbsc = home_candidate_point.to_numpy(
-                copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
-            home_candidate_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371), min_samples=self.dbscan_min_samples,
-                                         algorithm='ball_tree', metric='haversine').fit(
-                np.radians(home_candidate_for_dbsc))
+            home_candidate_point = home_candidate[["lon", "lat"]]
+            home_candidate_for_dbsc = home_candidate_point.to_numpy(copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
+            home_candidate_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371),
+                                         min_samples=self.dbscan_min_samples,
+                                         algorithm='ball_tree', metric='haversine').fit(np.radians(home_candidate_for_dbsc))
             home_candidate_labels = home_candidate_dbsc.labels_
             home_candidate_n_clusters_ = len(set(home_candidate_labels)) - (1 if -1 in home_candidate_labels else 0)
             home_candidate_total_n_noise_ = list(home_candidate_labels).count(-1)
             home_candidate_labels_list = home_candidate_labels.tolist()
             home_candidate['home_label'] = pd.DataFrame(home_candidate_labels_list)
-            home_candidate2 = home_candidate[['row_ID', 'home_label']]
-            home_df5 = pd.merge(all_df, home_candidate2, left_on='row_ID', right_on='row_ID', how='left')
+            home_candidate2 = home_candidate[['row_id', 'home_label']]
+            home_df5 = pd.merge(all_df, home_candidate2, left_on='row_id', right_on='row_id', how='left')
         else:
             home_df5 = all_df.copy()
             home_df5['home_label'] = -1
@@ -195,12 +170,12 @@ class LifePatternProcessor:
         work_day_df_list = []
 
         work_df1 = work_df[work_df['holiday'] != 1]
-        work_df2 = work_df1[(work_df1['end_hour'] <= 19) & (work_df1['hour'] >= 8)]
+        work_df2 = work_df1[(work_df1['departure_hour'] <= 19) & (work_df1['hour'] >= 8)]
         work_df4 = work_df2[work_df2['time_period_second'] >= 5400]  # 粗选work
         if work_df4.empty is False:
 
             work_candidate = work_df4.reset_index(drop=True)
-            work_candidate_point = work_candidate[["longitude", "latitude"]]
+            work_candidate_point = work_candidate[["lon", "lat"]]
             work_candidate_for_dbsc = work_candidate_point.to_numpy(copy=True)
             work_candidate_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371), min_samples=self.dbscan_min_samples,
                                          algorithm='ball_tree',
@@ -211,8 +186,8 @@ class LifePatternProcessor:
             work_candidate_labels_list = work_candidate_labels.tolist()
             work_candidate['work_label'] = pd.DataFrame(work_candidate_labels_list)
             # work_candidate.to_csv(csv_labeled_dir + i + '_labeled_work.csv', index=None)
-            work_candidate2 = work_candidate[['row_ID', 'work_label']]
-            final_candidate = pd.merge(home_df5, work_candidate2, left_on='row_ID', right_on='row_ID', how='left')
+            work_candidate2 = work_candidate[['row_id', 'work_label']]
+            final_candidate = pd.merge(home_df5, work_candidate2, left_on='row_id', right_on='row_id', how='left')
         else:
             final_candidate = home_df5.copy()
             final_candidate['work_label'] = -1
@@ -263,8 +238,8 @@ class LifePatternProcessor:
                         one_cluster_df2['home_label_new'] = home_max_index
                         one_cluster_df2['work_label_new'] = -1
                         one_cluster_df2['other_label_new'] = -1
-                        one_cluster_df2['home_lat'] = one_cluster_df2['latitude'].mean()
-                        one_cluster_df2['home_lon'] = one_cluster_df2['longitude'].mean()
+                        one_cluster_df2['home_lat'] = one_cluster_df2['lat'].mean()
+                        one_cluster_df2['home_lon'] = one_cluster_df2['lon'].mean()
                         one_cluster_df2['work_lat'] = -1
                         one_cluster_df2['work_lon'] = -1
                         one_cluster_df2['other_lat'] = -1
@@ -277,8 +252,8 @@ class LifePatternProcessor:
                         one_cluster_df2['other_label_new'] = -1
                         one_cluster_df2['home_lat'] = -1
                         one_cluster_df2['home_lon'] = -1
-                        one_cluster_df2['work_lat'] = one_cluster_df2['latitude'].mean()
-                        one_cluster_df2['work_lon'] = one_cluster_df2['longitude'].mean()
+                        one_cluster_df2['work_lat'] = one_cluster_df2['lat'].mean()
+                        one_cluster_df2['work_lon'] = one_cluster_df2['lon'].mean()
                         one_cluster_df2['other_lat'] = -1
                         one_cluster_df2['other_lon'] = -1
                         one_cluster_list.append(one_cluster_df2)
@@ -290,8 +265,8 @@ class LifePatternProcessor:
                     one_cluster_df2['home_label_new'] = home_max_index
                     one_cluster_df2['work_label_new'] = -1
                     one_cluster_df2['other_label_new'] = -1
-                    one_cluster_df2['home_lat'] = one_cluster_df2['latitude'].mean()
-                    one_cluster_df2['home_lon'] = one_cluster_df2['longitude'].mean()
+                    one_cluster_df2['home_lat'] = one_cluster_df2['lat'].mean()
+                    one_cluster_df2['home_lon'] = one_cluster_df2['lon'].mean()
                     one_cluster_df2['work_lat'] = -1
                     one_cluster_df2['work_lon'] = -1
                     one_cluster_df2['other_lat'] = -1
@@ -307,8 +282,8 @@ class LifePatternProcessor:
                     one_cluster_df2['other_label_new'] = -1
                     one_cluster_df2['home_lat'] = -1
                     one_cluster_df2['home_lon'] = -1
-                    one_cluster_df2['work_lat'] = one_cluster_df2['latitude'].mean()
-                    one_cluster_df2['work_lon'] = one_cluster_df2['longitude'].mean()
+                    one_cluster_df2['work_lat'] = one_cluster_df2['lat'].mean()
+                    one_cluster_df2['work_lon'] = one_cluster_df2['lon'].mean()
                     one_cluster_df2['other_lat'] = -1
                     one_cluster_df2['other_lon'] = -1
                     one_cluster_list.append(one_cluster_df2)
@@ -321,8 +296,8 @@ class LifePatternProcessor:
                     one_cluster_df2['home_lon'] = -1
                     one_cluster_df2['work_lat'] = -1
                     one_cluster_df2['work_lon'] = -1
-                    one_cluster_df2['other_lat'] = one_cluster_df2['latitude'].mean()
-                    one_cluster_df2['other_lon'] = one_cluster_df2['longitude'].mean()
+                    one_cluster_df2['other_lat'] = one_cluster_df2['lat'].mean()
+                    one_cluster_df2['other_lon'] = one_cluster_df2['lon'].mean()
                     one_cluster_list.append(one_cluster_df2)
 
         new_result = pd.concat(one_cluster_list, axis=0)
@@ -444,7 +419,8 @@ class LifePatternProcessor:
             geometry = [Point(xy) for xy in zip(final_result_home['home_lon'], final_result_home['home_lat'])]
             df_final_home = gpd.GeoDataFrame(final_result_home, crs="epsg:4326", geometry=geometry)
             df_final_home.crs = 'epsg:4326'
-            df_wether_within = gpd.sjoin(df_final_home, great_tokyo_map, how='left', predicate='intersects', lsuffix='left',
+            df_wether_within = gpd.sjoin(df_final_home, great_tokyo_map, how='left', predicate='intersects',
+                                         lsuffix='left',
                                          rsuffix='right')
             df_wether_within['within_right'].fillna(-1)
             df_final_within = df_wether_within[df_wether_within['within_right'] == 1]
@@ -454,9 +430,20 @@ class LifePatternProcessor:
                 return final_result2
         return
 
+    def merge_tree(self, save_support_tree):
+        pass
+
+    def NMF_average(self, save_results, raw_gps_file, raw_gps_folder):
+        pass
+
+    def plus_home_work_location(self, save_results):
+        pass
+
+    def generate_group_HWO_join_area2(self, save_results):
+        pass
 
 
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
-    stay_data = lpp_v2.select_great_tokyo(raw_gps_file='../functions/stay_point_detection/stay_points/stay_points.csv')
+    stay_data = lpp_v2.detect_home_work(raw_gps_file='../functions/stay_point_detection/stay_points/stay_points.csv')
     print('here')
