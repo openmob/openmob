@@ -6826,7 +6826,7 @@ class HolidayDataset(object):
             "name": "春分の日",
             "name_en": "Vernal Equinox Day",
 
-"week": "火",
+            "week": "火",
             "week_en": "Tuesday"
         },
         "2040-04-29": {
