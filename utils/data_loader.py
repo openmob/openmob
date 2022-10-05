@@ -23,6 +23,15 @@ def load_tsmc2014_tky(input_file):
         return df
 
 
+def load_tsmc2014_tky_stay_points(input_file):
+    if not os.path.exists(input_file):
+        print('No exited stay points, try stay_point_detection_process at first..')
+        return
+    else:
+        df = pd.read_csv(input_file)
+        return df
+
+
 def individual_traj(input_file, length, output_folder):
     data = load_tsmc2014_tky(input_file)
     total_uid = data.user_id.unique()

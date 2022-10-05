@@ -19,7 +19,7 @@ def check_output_folder(output_folder):
 
 def timestamp_calc(line):
     timestamp = pd.to_datetime(line.utc_time) + pd.Timedelta('{}.minutes'.format(line.time_zone_offset))
-    return timestamp
+    return pd.to_datetime(timestamp).replace(tzinfo=None)
 
 
 def separate_trip(input_file, output_folder, length):
@@ -34,7 +34,10 @@ def separate_trip(input_file, output_folder, length):
         tmp = pd.concat([tmp, timestamp.rename('timestamp')], axis=1)
         # tmp.to_csv('./{}.csv'.format(user_id_), index=False)
         tmp = stay_point_detection_process(tmp)
-        tmp.to_csv(output_folder + '{}.csv'.format(user_id_), index=False)
+        if not os.path.exists(output_folder + 'stay_points.csv'):
+            tmp.to_csv(output_folder + 'stay_points.csv', index=False, mode='w')
+        else:
+            tmp.to_csv(output_folder + 'stay_points.csv', index=False, mode='a', header=None)
     return
 
 
