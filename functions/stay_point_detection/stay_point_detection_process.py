@@ -6,53 +6,7 @@ import os
 from openmob.pool.stay_point_detection import *
 
 
-def load_data_tsmc(input_file):
-    data = pd.read_table(input_file, encoding='latin-1', header=None)
-    data.columns = ['user_id', 'venue_id', 'venue_category_id', 'venue_name', 'lat', 'lon', 'time_zone_offset',
-                    'utc_time']
-    return data
 
-def check_output_folder(output_folder):
-    if not os.path.exists(output_folder):
-        os.mkdir(output_folder)
-    else:
-        print('output folder existed...')
-
-def timestamp_calc(line):
-    timestamp = pd.to_datetime(line.utc_time) + pd.Timedelta('{}.minutes'.format(line.time_zone_offset))
-    return pd.to_datetime(timestamp).replace(tzinfo=None)
-
-
-def separate_trip(input_file, output_folder, length):
-    check_output_folder(output_folder)
-    data = load_data_tsmc(input_file)
-    total_user_number = len(data.user_id.unique())
-    if length >= total_user_number:
-        print('Desired number of output separate files is larger than total user number...')
-    for user_id_ in data.user_id.unique()[:length]:
-        tmp = data[data.user_id == user_id_]
-        timestamp = tmp.T.apply(lambda x: timestamp_calc(x))
-        tmp = pd.concat([tmp, timestamp.rename('timestamp')], axis=1)
-        # tmp.to_csv('./{}.csv'.format(user_id_), index=False)
-        tmp = stay_point_detection_process(tmp)
-        if not os.path.exists(output_folder + 'stay_points.csv'):
-            tmp.to_csv(output_folder + 'stay_points.csv', index=False, mode='w')
-        else:
-            tmp.to_csv(output_folder + 'stay_points.csv', index=False, mode='a', header=None)
-    return
-
-
-def stay_point_detection_process(data):
-    print(time.ctime())
-    try:
-        data = data.sort_values(by=['user_id', 'timestamp'])
-        data = data.reset_index(drop=True)[['user_id', 'timestamp',
-                                            'lat', 'lon', 'venue_name']]
-        sp = apply_parallel(data.groupby('user_id'), stay_point_detection)
-        return sp
-    except OSError:
-        print('error found...')
-        return
 
 
 if __name__ == '__main__':
