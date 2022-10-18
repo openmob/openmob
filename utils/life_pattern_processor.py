@@ -47,7 +47,7 @@ class LifePatternProcessor:
             os.mkdir(self.clustering_results_folder)
         return
 
-    def select_area(self, raw_gps_file: str = None) -> object:
+    def select_area(self, raw_gps_file=None):
 
         if raw_gps_file is not None:
             self.raw_gps_file = raw_gps_file
