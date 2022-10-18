@@ -1,4 +1,4 @@
-from openmob.utils.life_pattern_processor_base import *
+from openmob.pool.life_pattern_processor_base import *
 import os
 
 

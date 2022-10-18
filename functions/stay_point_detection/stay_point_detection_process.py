@@ -3,7 +3,7 @@ import pandas as pd
 import sys
 import time
 import os
-from openmob.utils.stay_point_detection import *
+from openmob.pool.stay_point_detection import *
 
 
 def load_data_tsmc(input_file):

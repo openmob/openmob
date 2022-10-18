@@ -8,7 +8,7 @@ import pandas as pd
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
 
-from openmob.utils import data_loader
+from openmob.pool import data_loader
 
 warnings.filterwarnings('ignore')
 matplotlib.use('Agg')
