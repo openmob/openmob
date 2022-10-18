@@ -1,6 +1,6 @@
 import multiprocessing
 from math import radians, cos, sin, asin, sqrt
-import time
+from . import data_loader
 import pandas as pd
 from joblib import Parallel, delayed
 
@@ -23,33 +23,54 @@ def cluster_check(tmp_cluster, threshold_dis):
     return True
 
 
-def stay_point_detection(traj, time_threshold=10, distance_threshold=200):
-    traj = traj.reset_index(drop=True)
-    num_points = len(traj)
-    #     print(num_points)
-    time_threshold_ = pd.Timedelta('{}minute'.format(time_threshold))
-    sp_ = pd.DataFrame()
-    s = pd.DataFrame()
-    i = 0
-    while i < num_points - 1:
-        k = [i]
-        j = i + 1
+class StayPointDetector:
 
-        while j < num_points:
-            distance_tmp = cal_distance(lon1=traj.loc[i, 'lon'], lat1=traj.loc[i, 'lat'],
-                                        lon2=traj.loc[j, 'lon'], lat2=traj.loc[j, 'lat'])
-            if distance_tmp <= distance_threshold:
+    def __init__(self, args):
 
-                if traj.loc[j, 'timestamp'] - traj.loc[i, 'timestamp'] >= time_threshold_:
-                    k.append(j)
-                    j += 1
+        self.input_file = args.input_file
+        self.output_folder = args.output_folder
+        self.time_threshold = args.time_threshold
+        self.distance_threshold = args.distance_threshold
+
+    def naive_stay_point_detection(self, traj):
+        traj = traj.reset_index(drop=True)
+        num_points = len(traj)
+
+        time_threshold_ = pd.Timedelta('{}minute'.format(self.time_threshold))
+        sp_ = pd.DataFrame()
+        s = pd.DataFrame()
+        i = 0
+        while i < num_points - 1:
+            k = [i]
+            j = i + 1
+
+            while j < num_points:
+                distance_tmp = cal_distance(lon1=traj.loc[i, 'lon'], lat1=traj.loc[i, 'lat'],
+                                            lon2=traj.loc[j, 'lon'], lat2=traj.loc[j, 'lat'])
+                if distance_tmp <= self.distance_threshold:
+
+                    if traj.loc[j, 'timestamp'] - traj.loc[i, 'timestamp'] >= time_threshold_:
+                        k.append(j)
+                        j += 1
+                    else:
+                        i = j
+                        break
                 else:
                     i = j
                     break
             else:
-                i = j
+                if len(k) >= 2:
+                    ix = k[0]
+                    jx = k[-1]
+                    s.loc[0, 'user_id'] = traj.loc[ix, 'user_id']
+                    s.loc[0, 'lon'] = traj.loc[ix:jx, 'lon'].mean()
+                    s.loc[0, 'lat'] = traj.loc[ix:jx, 'lat'].mean()
+                    s.loc[0, 'arrival_time'] = traj.loc[ix, 'timestamp']
+                    s.loc[0, 'departure_time'] = traj.loc[jx, 'timestamp']
+                    s.loc[0, 'venue_name'] = traj.loc[ix, 'venue_name']
+                    sp_ = pd.concat([sp_, s], axis=0)
                 break
-        else:
+
             if len(k) >= 2:
                 ix = k[0]
                 jx = k[-1]
@@ -60,29 +81,24 @@ def stay_point_detection(traj, time_threshold=10, distance_threshold=200):
                 s.loc[0, 'departure_time'] = traj.loc[jx, 'timestamp']
                 s.loc[0, 'venue_name'] = traj.loc[ix, 'venue_name']
                 sp_ = pd.concat([sp_, s], axis=0)
-            break
-
-        if len(k) >= 2:
-            ix = k[0]
-            jx = k[-1]
-            s.loc[0, 'user_id'] = traj.loc[ix, 'user_id']
-            s.loc[0, 'lon'] = traj.loc[ix:jx, 'lon'].mean()
-            s.loc[0, 'lat'] = traj.loc[ix:jx, 'lat'].mean()
-            s.loc[0, 'arrival_time'] = traj.loc[ix, 'timestamp']
-            s.loc[0, 'departure_time'] = traj.loc[jx, 'timestamp']
-            s.loc[0, 'venue_name'] = traj.loc[ix, 'venue_name']
-            sp_ = pd.concat([sp_, s], axis=0)
-    return sp_
+        return sp_
 
 
-def stay_point_detection_process(data):
-    print(time.ctime())
+def stay_point_detection_process(args):
+    """
+    We will consider multiple input GPS files in the future.
+    """
+
+    data = data_loader.load_tsmc2014_tky(args.input_file)
+    output_file_name = args.input_file.split('/')[-1].replace('.csv', '_stay_points.csv')
+    stay_point_detector = StayPointDetector(args)
     try:
         data = data.sort_values(by=['user_id', 'timestamp'])
         data = data.reset_index(drop=True)[['user_id', 'timestamp',
                                             'lat', 'lon', 'venue_name']]
-        sp = apply_parallel(data.groupby('user_id'), stay_point_detection)
-        return sp
+        sp = apply_parallel(data.groupby('user_id'), stay_point_detector.naive_stay_point_detection)
+        sp.to_csv(args.output_folder + output_file_name, index=False)
+        return
     except OSError:
         print('error found...')
         return

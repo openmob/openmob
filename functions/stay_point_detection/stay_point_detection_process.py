@@ -1,24 +1,23 @@
 import argparse
-import pandas as pd
-import sys
-import time
-import os
-from openmob.pool.stay_point_detection import *
-
-
-
-
+from openmob.utils import stay_point_detection
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Args for separating trips from GPS trajectory datasets.')
     parser.add_argument('--input_file', '-if',
-                        default='../../datasets/dataset_tsmc2014/dataset_TSMC2014_TKY.txt',
+                        default='../../datasets/dataset_tsmc2014/dataset_TSMC2014_TKY.csv',
                         help='file of GPS trajectory datasets.')
-    parser.add_argument('--length', '-l', default=10, type=int,
-                        help='desired number of output separate files')
+    parser.add_argument('--time_threshold', '-th',
+                        default=10,
+                        help='time threshold for StayPointDetector.')
+    parser.add_argument('--distance_threshold', '-dh',
+                        default=200,
+                        help='distance threshold for StayPointDetector.')
+    parser.add_argument('--worker', '-w',
+                        default=4,
+                        help='number of cores used.')
     parser.add_argument('--output_folder', '-of',
-                        default='./stay_points/',
+                        default='./',
                         help='file of GPS trajectory datasets.')
     args = parser.parse_args()
 
-    separate_trip(input_file=args.input_file, length=args.length, output_folder=args.output_folder)
+    stay_point_detection.stay_point_detection_process(args)

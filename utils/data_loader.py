@@ -21,9 +21,11 @@ def load_tsmc2014_tky(input_file):
         timestamp = df.T.apply(lambda x: timestamp_calc(x))
         df = pd.concat([df, timestamp.rename('timestamp')], axis=1)
         df.to_csv(input_file, index=False)
+        df['timestamp'] = pd.to_datetime(df.timestamp)
         return df
     else:
         df = pd.read_csv(input_file)
+        df['timestamp'] = pd.to_datetime(df.timestamp)
         return df
 
 
