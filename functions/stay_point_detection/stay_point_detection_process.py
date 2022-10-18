@@ -11,6 +11,7 @@ def load_data_tsmc(input_file):
     data.columns = ['user_id', 'venue_id', 'venue_category_id', 'venue_name', 'lat', 'lon', 'time_zone_offset',
                     'utc_time']
     return data
+
 def check_output_folder(output_folder):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)

@@ -16,13 +16,13 @@ matplotlib.use('Agg')
 
 class LifePatternProcessor:
 
-    def __init__(self, map_file='../datasets/gis/greater_tokyo_area_dissolve.shp'):
+    def __init__(self):
         self.kept_data = None
         self.user_id_list = None
         self.raw_gps_file = None
         self.dbscan_min_samples = 10
         self.distance_for_eps = 0.03
-        self.map_file = map_file
+        self.map_file = None
         self.clustering_results_folder = None
         self.support_tree_folder = None
         self.raw_gps_folder = None
@@ -47,66 +47,69 @@ class LifePatternProcessor:
             os.mkdir(self.clustering_results_folder)
         return
 
-    def select_great_tokyo(self, raw_gps_file=None):
+    def select_area(self, raw_gps_file: str = None) -> object:
+
         if raw_gps_file is not None:
             self.raw_gps_file = raw_gps_file
-        great_tokyo_map = gpd.GeoDataFrame.from_file(self.map_file)
-        if great_tokyo_map.crs is None:
-            great_tokyo_map.crs = 'epsg:4326'
+
+        if self.map_file is not None:
+            great_tokyo_map = gpd.GeoDataFrame.from_file(self.map_file)
+
+            if great_tokyo_map.crs is None:
+                great_tokyo_map.crs = 'epsg:4326'
+
+        ### add if check to load different data source
         data = data_loader.load_tsmc2014_tky_stay_points(self.raw_gps_file)
         self.user_id_list = data.user_id.unique()
+
         if len(self.user_id_list) == 0:
             print('user_id is null...')
             return
         else:
             stay_data_ = data[['user_id', 'lat', 'lon', 'arrival_time', 'departure_time']]
-            if len(stay_data_) == 0:
-                print('stay data is empty...')
-                return
-            else:
-                stay_data_['arrival_time'] = pd.to_datetime(stay_data_.arrival_time)
-                stay_data_['departure_time'] = pd.to_datetime(stay_data_.departure_time)
-                stay_data20 = stay_data_.sort_values(by=['user_id', 'arrival_time'])
-                stay_data20['lon'] = stay_data20['lon'].astype(float)
-                stay_data20['lat'] = stay_data20['lat'].astype(float)
-                stay_data3 = stay_data20[(stay_data20['lon'] >= 125) & (stay_data20['lat'] >= 20)]  # 不在日本境内的被剔除
-                stay_data3 = stay_data3.reset_index(drop=True)
-                stay_data3['hour'] = pd.to_datetime(stay_data3['arrival_time']).dt.hour
-                stay_data3['weekday'] = pd.to_datetime(stay_data3['arrival_time']).dt.weekday
-                stay_data3['weekday'] = stay_data3['weekday'] + 1
-                stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])
-                stay_data3['time_period_second'] = (pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])).dt.seconds
-                geometry = [Point(xy) for xy in zip(stay_data3['lon'], stay_data3['lat'])]
-                stay_data4 = gpd.GeoDataFrame(stay_data3, crs="epsg:4326", geometry=geometry)
-                stay_data4.crs = 'epsg:4326'
-                stay_data5 = gpd.sjoin(stay_data4, great_tokyo_map, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
-                stay_data6 = stay_data5.reset_index(drop=True)
-                stay_data6 = stay_data6.drop(['geometry', 'index_right'], axis=1)
-                stay_data6['within'] = stay_data6['within'].fillna(-1)
-                tokyo_stay = stay_data6[stay_data6['within'] == 1]
+            stay_data_['arrival_time'] = pd.to_datetime(stay_data_.arrival_time)
+            stay_data_['departure_time'] = pd.to_datetime(stay_data_.departure_time)
+            stay_data20 = stay_data_.sort_values(by=['user_id', 'arrival_time'])
+            stay_data20['lon'] = stay_data20['lon'].astype(float)
+            stay_data20['lat'] = stay_data20['lat'].astype(float)
+            stay_data3 = stay_data20[(stay_data20['lon'] >= 125) & (stay_data20['lat'] >= 20)]  # 不在日本境内的被剔除
+            stay_data3 = stay_data3.reset_index(drop=True)
+            stay_data3['hour'] = pd.to_datetime(stay_data3['arrival_time']).dt.hour
+            stay_data3['weekday'] = pd.to_datetime(stay_data3['arrival_time']).dt.weekday
+            stay_data3['weekday'] = stay_data3['weekday'] + 1
+            stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])
+            stay_data3['time_period_second'] = (pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])).dt.seconds
+            geometry = [Point(xy) for xy in zip(stay_data3['lon'], stay_data3['lat'])]
+            stay_data4 = gpd.GeoDataFrame(stay_data3, crs="epsg:4326", geometry=geometry)
+            stay_data4.crs = 'epsg:4326'
+            stay_data5 = gpd.sjoin(stay_data4, great_tokyo_map, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+            stay_data6 = stay_data5.reset_index(drop=True)
+            stay_data6 = stay_data6.drop(['geometry', 'index_right'], axis=1)
+            stay_data6['within'] = stay_data6['within'].fillna(-1)
+            tokyo_stay = stay_data6[stay_data6['within'] == 1]
 
-                # check the stay ratio of each user, then remove those users who have low stay ratio in tokyo.
-                keep_ids = []
-                for ids in self.user_id_list:
-                    stay_data6_tmp = stay_data6[stay_data6.user_id == ids]
-                    tokyo_stay_tmp = tokyo_stay[tokyo_stay.user_id == ids]
-                    if len(stay_data6_tmp) != 0:
-                        if (len(stay_data6_tmp) > 10) & (len(tokyo_stay_tmp) >= 4) & (
-                                (len(tokyo_stay_tmp) / len(stay_data6_tmp)) >= 0.2):
-                            keep_ids.append(ids)
-                        else:
-                            continue
+            # check the stay ratio of each user, then remove those users who have low stay ratio in tokyo.
+            keep_ids = []
+            for ids in self.user_id_list:
+                stay_data6_tmp = stay_data6[stay_data6.user_id == ids]
+                tokyo_stay_tmp = tokyo_stay[tokyo_stay.user_id == ids]
+                if len(stay_data6_tmp) != 0:
+                    if (len(stay_data6_tmp) > 10) & (len(tokyo_stay_tmp) >= 4) & (
+                            (len(tokyo_stay_tmp) / len(stay_data6_tmp)) >= 0.2):
+                        keep_ids.append(ids)
                     else:
                         continue
-                print('total users: {}; kept users: {}'.format(len(self.user_id_list), len(keep_ids)))
-                self.kept_data = stay_data6[stay_data6.user_id.isin(keep_ids)]
-                return self.kept_data
+                else:
+                    continue
+            print('total users: {}; kept users: {}'.format(len(self.user_id_list), len(keep_ids)))
+            self.kept_data = stay_data6[stay_data6.user_id.isin(keep_ids)]
+            return self.kept_data
 
     def detect_home_work(self, raw_gps_file=None):
 
         if raw_gps_file is not None:
             self.raw_gps_file = raw_gps_file
-        df = self.select_great_tokyo(self.raw_gps_file)
+        df = self.select_area(self.raw_gps_file)
         if df is None:
             print('No stay data is given...')
             return
