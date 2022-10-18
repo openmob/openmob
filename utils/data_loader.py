@@ -1,6 +1,5 @@
 import argparse
 import os.path
-
 import pandas as pd
 
 """
@@ -59,4 +58,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     data = load_tsmc2014_tky(args.input_file)
-    print('here')
