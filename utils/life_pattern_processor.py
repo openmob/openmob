@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
-
+from joblib import Parallel, delayed
+import multiprocessing
 from openmob.pool import data_loader
 
 warnings.filterwarnings('ignore')
@@ -434,15 +435,11 @@ class LifePatternProcessor:
                     return final_result2
             return
 
-        user_ids = self.kept_data.user_id.unique()
-        container = pd.DataFrame()
-        for ids in user_ids:
-            print('processing {}'.format(ids))
-            df = self.kept_data[self.kept_data.user_id == ids]
-            part = dbscan_individual(df)
-            if part is not None:
-                container = pd.concat([container, part], axis=0)
-        return container
+        final_result = apply_parallel(self.kept_data.groupby('user_id'), dbscan_individual)
+        return final_result
+
+    def key_point_detection(self):
+        pass
 
     def merge_tree(self, save_support_tree):
         pass
@@ -457,9 +454,15 @@ class LifePatternProcessor:
         pass
 
 
+def apply_parallel(df_grouped, func):
+    ret_lst = Parallel(n_jobs=multiprocessing.cpu_count())(delayed(func)(group) for name, group in df_grouped)
+    return pd.concat(ret_lst)
+
+
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
     stay_data2 = lpp_v2.select_area(raw_gps_file='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
                                    map_file=None)
     container = lpp_v2.detect_home_work()
+    print(np.shape(container))
     print('here')
