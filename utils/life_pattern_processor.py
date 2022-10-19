@@ -110,6 +110,7 @@ class LifePatternProcessor:
                         continue
                 print('total users: {}; kept users: {}'.format(len(self.user_id_list), len(keep_ids)))
                 self.kept_data = stay_data6[stay_data6.user_id.isin(keep_ids)]
+                self.kept_data = self.kept_data.drop('within', axis=1)
             else:
                 self.kept_data = stay_data3
             return self.kept_data
