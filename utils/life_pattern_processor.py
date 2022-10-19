@@ -464,5 +464,5 @@ if __name__ == '__main__':
     stay_data2 = lpp_v2.select_area(raw_gps_file='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
                                    map_file=None)
     container = lpp_v2.detect_home_work()
-    print(np.shape(container))
+    print(container)
     print('here')
