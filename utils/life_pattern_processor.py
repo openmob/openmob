@@ -534,8 +534,69 @@ class LifePatternProcessor:
                 return
 
         df = apply_parallel(self.home_work_result.groupby('user_id'), extract_life_pattern_individual)
+        self.life_pattern = df
         return df
 
+
+    def support_tree(self):
+
+        # concat all the possible node of the tree and drop duplicate node.
+        error_list = []
+        tree_df_list = []
+        list_1w = []
+        list_20w = []
+        list_total = []
+        j = 0
+        m = 0
+        for k in range(len(filename_list)):
+            try:
+                self.raw_gps_file = filename_list[k]
+                # print(self.raw_gps_file)
+                # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+                df = self.extract_life_pattern(self.raw_gps_file)
+                list_1w.append(df)
+                if k % 100 == 0 and k > 10:
+                    concat_1w = pd.concat(list_1w)
+                    concat_1W_2 = concat_1w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                    list_20w.append(concat_1W_2)
+                    list_1w = []
+                    j += 1
+                    # print('==========', 'file:', k, '==========')
+                    # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
+
+                if k % 2000 == 0 and k > 100:
+                    concat_20w = pd.concat(list_20w)
+                    concat_20w_2 = concat_20w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                    list_total.append(concat_20w_2)
+                    list_20w = []
+                    m += 1
+                    # print('==========', 'file:', k, '==========')
+                    # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
+            except Exception as e:
+                error_list.append([k, e])
+
+        if len(list_1w) != 0:
+            concat_1w_rest = pd.concat(list_1w)
+            concat_1W_rest_2 = concat_1w_rest.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+            list_total.append(concat_1W_rest_2)
+
+        if len(list_20w) != 0:
+            concat_20w_rest = pd.concat(list_20w)
+            concat_20w_rest_2 = concat_20w_rest.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+            list_total.append(concat_20w_rest_2)
+
+        tree_concat = pd.concat(list_total)
+        tree_concat2 = tree_concat.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+        # print(len(tree_concat), len(tree_concat2))
+        tree_concat3 = tree_concat2.sort_values(by=['time', 'places', 'next_places'], ascending=True)
+
+        # give each node a  unique index
+        tree_concat3['tree_index'] = list(range(0, len(tree_concat3)))
+        # tree_concat3.to_csv(done_dir + '//demo_tree_index.csv', index=False)
+        error_df = pd.DataFrame(error_list)
+        # error_df.to_csv('3_4_except_error.csv', index=False)
+        # print(1)
+        return tree_concat3, error_df
 
     def merge_tree(self, save_support_tree):
         pass
