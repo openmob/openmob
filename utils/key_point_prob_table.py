@@ -6,6 +6,11 @@ from pandas import DataFrame
 
 import minitools
 
+
+def key_point_detection(self):
+    pass
+
+
 parser = argparse.ArgumentParser(description='Args for Key Location Generator Training.')
 
 parser.add_argument('--KEY_POINT_PATH', '-kp_path',

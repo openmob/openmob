@@ -18,6 +18,7 @@ matplotlib.use('Agg')
 class LifePatternProcessor:
 
     def __init__(self):
+        self.home_work_result = None
         self.kept_data = None
         self.user_id_list = None
         self.raw_gps_file = None
@@ -55,13 +56,8 @@ class LifePatternProcessor:
             self.raw_gps_file = raw_gps_file
 
         self.map_file = map_file
-        if self.map_file is not None:
-            area_map = gpd.GeoDataFrame.from_file(self.map_file)
 
-            if area_map.crs is None:
-                area_map.crs = 'epsg:4326'
-
-        ### add if check to load different data source
+        # add if check to load different data source
         data = data_loader.load_tsmc2014_tky_stay_points(self.raw_gps_file)
         self.user_id_list = data.user_id.unique()
 
@@ -86,14 +82,21 @@ class LifePatternProcessor:
             stay_data3['weekday'] = pd.to_datetime(stay_data3['arrival_time']).dt.weekday + 1
             stay_data3['day'] = pd.to_datetime(stay_data3['arrival_time']).dt.day
 
-            stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])
-            stay_data3['time_period_second'] = (pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(stay_data3['arrival_time'])).dt.seconds
+            stay_data3['time_period'] = pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(
+                stay_data3['arrival_time'])
+            stay_data3['time_period_second'] = (pd.to_datetime(stay_data3['departure_time']) - pd.to_datetime(
+                stay_data3['arrival_time'])).dt.seconds
 
             if self.map_file is not None:
+                area_map = gpd.GeoDataFrame.from_file(self.map_file)
+                if area_map.crs is None:
+                    area_map.crs = 'epsg:4326'
+
                 geometry = [Point(xy) for xy in zip(stay_data3['lon'], stay_data3['lat'])]
                 stay_data4 = gpd.GeoDataFrame(stay_data3, crs="epsg:4326", geometry=geometry)
                 stay_data4.crs = 'epsg:4326'
-                stay_data5 = gpd.sjoin(stay_data4, area_map, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+                stay_data5 = gpd.sjoin(stay_data4, area_map, how='left', predicate='intersects', lsuffix='left',
+                                       rsuffix='right')
                 stay_data6 = stay_data5.reset_index(drop=True)
                 stay_data6 = stay_data6.drop(['geometry', 'index_right'], axis=1)
                 stay_data6['within'] = stay_data6['within'].fillna(-1)
@@ -140,7 +143,8 @@ class LifePatternProcessor:
 
             all_df = df.copy()
             all_df_point = all_df[["lon", "lat"]]
-            all_df_for_dbsc = all_df_point.to_numpy(copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
+            all_df_for_dbsc = all_df_point.to_numpy(
+                copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
             all_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371), min_samples=self.dbscan_min_samples,
                               algorithm='ball_tree',
                               metric='haversine').fit(np.radians(all_df_for_dbsc))
@@ -160,10 +164,12 @@ class LifePatternProcessor:
 
                 home_candidate = home_df4.reset_index(drop=True)
                 home_candidate_point = home_candidate[["lon", "lat"]]
-                home_candidate_for_dbsc = home_candidate_point.to_numpy(copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
+                home_candidate_for_dbsc = home_candidate_point.to_numpy(
+                    copy=True)  # convert to array   df2.as_matrix().astype("float64", copy=False)
                 home_candidate_dbsc = DBSCAN(eps=(self.distance_for_eps / 6371),
                                              min_samples=self.dbscan_min_samples,
-                                             algorithm='ball_tree', metric='haversine').fit(np.radians(home_candidate_for_dbsc))
+                                             algorithm='ball_tree', metric='haversine').fit(
+                    np.radians(home_candidate_for_dbsc))
                 home_candidate_labels = home_candidate_dbsc.labels_
                 home_candidate_labels_list = home_candidate_labels.tolist()
                 home_candidate['home_label'] = pd.DataFrame(home_candidate_labels_list)
@@ -197,7 +203,8 @@ class LifePatternProcessor:
                 final_candidate = home_df5.copy()
                 final_candidate['work_label'] = -1
 
-            final_candidate.loc[:, ['home_label', 'work_label']] = final_candidate[['home_label', 'work_label']].fillna(-1)
+            final_candidate.loc[:, ['home_label', 'work_label']] = final_candidate[['home_label', 'work_label']].fillna(
+                -1)
 
             # determine whether the cluster that obtain from first step is  WORK or HOME
             one_cluster_list = []
@@ -221,13 +228,15 @@ class LifePatternProcessor:
                     # compare the days
                     home_counts_df = one_cluster_df[one_cluster_df['home_label'] != -1]
                     home_counts_df2 = home_counts_df.drop_duplicates(['day'], keep='first')
-                    home_counts1 = pd.value_counts(home_counts_df2['home_label']).sort_values(ascending=False).to_frame()
+                    home_counts1 = pd.value_counts(home_counts_df2['home_label']).sort_values(
+                        ascending=False).to_frame()
                     home_counts1['home_index'] = home_counts1.index.tolist()
                     home_counts1.columns = ['num_home', 'home_index']
                     home_counts4 = home_counts1.reset_index(drop=True)
                     work_counts_df = one_cluster_df[one_cluster_df['work_label'] != -1]
                     work_counts_df2 = work_counts_df.drop_duplicates(['day'], keep='first')
-                    work_counts1 = pd.value_counts(work_counts_df2['work_label']).sort_values(ascending=False).to_frame()
+                    work_counts1 = pd.value_counts(work_counts_df2['work_label']).sort_values(
+                        ascending=False).to_frame()
                     work_counts1['work_index'] = work_counts1.index.tolist()
                     work_counts1.columns = ['num_work', 'work_index']
                     work_counts4 = work_counts1.reset_index(drop=True)
@@ -304,7 +313,7 @@ class LifePatternProcessor:
 
             new_result = pd.concat(one_cluster_list, axis=0)
 
-            # determine home work label order
+            # determine home/work label order
 
             new_result_home = new_result[new_result['home_label_new'] != -1]
             if len(new_result_home) != 0:
@@ -317,7 +326,8 @@ class LifePatternProcessor:
                 noise_new = new_result[new_result['all_detect_label'] == -1]
 
                 if len(home_new) != 0:
-                    home_order_counts = pd.value_counts(home_new['home_label_new']).sort_values(ascending=False).to_frame()
+                    home_order_counts = pd.value_counts(home_new['home_label_new']).sort_values(
+                        ascending=False).to_frame()
                     home_order_counts['original_home_label'] = home_order_counts.index.tolist()
                     home_order_counts['home_label_new_order'] = list(range(len(home_order_counts)))
                     home_order_counts.columns = ['counts', 'original_home_label', 'home_label_order']
@@ -336,13 +346,15 @@ class LifePatternProcessor:
                          'end_hour', 'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id',
                          'all_detect_label', 'home_label', 'work_label', 'home_label_new', 'work_label_new',
                          'other_label_new',
-                         'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon', 'work_lat',
+                         'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon',
+                         'work_lat',
                          'work_lon', 'other_lat', 'other_lon']]
 
                     new_list.append(home_group_0)
 
                 if len(work_new) != 0:
-                    work_order_counts = pd.value_counts(work_new['work_label_new']).sort_values(ascending=False).to_frame()
+                    work_order_counts = pd.value_counts(work_new['work_label_new']).sort_values(
+                        ascending=False).to_frame()
                     work_order_counts['original_work_label'] = work_order_counts.index.tolist()
                     work_order_counts['work_label_new_order'] = list(range(len(work_order_counts)))
                     work_order_counts.columns = ['counts', 'original_work_label', 'work_label_order']
@@ -422,11 +434,11 @@ class LifePatternProcessor:
                     geometry = [Point(xy) for xy in zip(final_result_home['home_lon'], final_result_home['home_lat'])]
                     df_final_home = gpd.GeoDataFrame(final_result_home, crs="epsg:4326", geometry=geometry)
                     df_final_home.crs = 'epsg:4326'
-                    df_wether_within = gpd.sjoin(df_final_home, great_tokyo_map, how='left', predicate='intersects',
-                                             lsuffix='left',
-                                             rsuffix='right')
-                    df_wether_within['within_right'].fillna(-1)
-                    df_final_within = df_wether_within[df_wether_within['within_right'] == 1]
+                    df_whether_within = gpd.sjoin(df_final_home, great_tokyo_map, how='left', predicate='intersects',
+                                                  lsuffix='left',
+                                                  rsuffix='right')
+                    df_whether_within['within_right'].fillna(-1)
+                    df_final_within = df_whether_within[df_whether_within['within_right'] == 1]
                 else:
                     df_final_within = final_result_home
 
@@ -436,10 +448,94 @@ class LifePatternProcessor:
             return
 
         final_result = apply_parallel(self.kept_data.groupby('user_id'), dbscan_individual)
+        self.home_work_result = final_result
         return final_result
 
-    def key_point_detection(self):
-        pass
+    def extract_life_pattern(self):
+
+        def extract_life_pattern_individual(df0):
+            df_list = []
+
+            for key_day, item_day in df0.groupby(by=['day']):  # 拆分每个用户每一天
+                date = key_day
+                df0 = item_day.copy()
+
+                # 如果有同一小时内的记录，保留停留时间较长的那条
+                df00 = df0.sort_values('time_period_second').drop_duplicates(['hour'],
+                                                                             keep='last')  # ascending = True 为升序，默认
+                df00['arrival_time'] = pd.to_datetime(df00['arrival_time'])
+                df = df00.sort_values(by='arrival_time')
+
+                week_day = df['weekday'].mean()
+                holiday = df['holiday'].mean()
+
+                # 从0点到23点 填充记录
+
+                df_date = pd.DataFrame({'time': list(range(0, 24)), 'places': [-1] * 24})
+                for t, row in df.iterrows():
+                    s_time = row['hour']
+                    e_time = row['end_hour']
+                    if (row['home_label_order'] == -1) & (row['work_label_order'] == -1) & (row['other_label_order'] == -1):
+                        pass
+                    else:
+                        if (row['home_label_order'] != -1) & (row['work_label_order'] == -1) & (
+                                row['other_label_order'] == -1):
+                            home_label = 'H' + '_' + str(int(row['home_label_order']))
+                            df_date.loc[df_date['time'] == s_time, 'places'] = home_label
+                            df_date.loc[df_date['time'] == e_time, 'places'] = home_label
+                        elif (row['home_label_order'] == -1) & (row['work_label_order'] != -1) & (
+                                row['other_label_order'] == -1):
+                            work_label = 'W' + '_' + str(int(row['work_label_order']))
+                            df_date.loc[df_date['time'] == s_time, 'places'] = work_label
+                            df_date.loc[df_date['time'] == e_time, 'places'] = work_label
+                        elif (row['home_label_order'] == -1) & (row['work_label_order'] == -1) & (
+                                row['other_label_order'] != -1):
+                            other_label = 'O' + '_' + str(int(row['other_label_order']))
+                            df_date.loc[df_date['time'] == s_time, 'places'] = other_label
+                            df_date.loc[df_date['time'] == e_time, 'places'] = other_label
+
+                # 补足没有记录的行
+                places_index = list(df_date[df_date['places'] != -1].index)
+                if len(places_index) != 0:
+                    places_split = np.split(df_date, places_index, axis=0)
+                    places_list = []
+                    for j in range(0, len(places_split)):
+                        if j == 0:
+                            places_df = places_split[j].copy()
+
+                            home_order = df[df['home_label_order'] != -1]
+                            if len(home_order) != 0:
+                                home_num = home_order['home_label_order'].min()
+                                places_df['places'] = 'H' + '_' + str(home_num)
+                            if len(home_order) == 0:
+                                places_df['places'] = "H_0"
+                            places_list.append(places_df)
+                        elif j != 0:
+                            places_df = places_split[j].copy()
+                            places_df = places_df.reset_index(drop=True)
+                            places_df['places'] = places_df.loc[0, 'places']
+                            places_list.append(places_df)
+
+                    places_concat = pd.concat(places_list)
+                    places_concat = places_concat.reset_index(drop=True)
+                    places_concat['next_places'] = places_concat['places'].shift(-1)
+                    places_concat.loc[23, 'next_places'] = places_concat.loc[23, 'places']
+                    places_concat['user_id'] = df0.user_id.values[0]
+                    places_concat['date'] = date
+                    places_concat['week_day'] = week_day
+                    places_concat['holiday'] = holiday
+
+                    df_list.append(places_concat)
+
+            if len(df_list) != 0:
+                final_pattern_df = pd.concat(df_list)
+                return final_pattern_df
+            else:
+                return
+
+        df = apply_parallel(self.home_work_result.groupby('user_id'), extract_life_pattern_individual)
+        return df
+
 
     def merge_tree(self, save_support_tree):
         pass
@@ -461,8 +557,10 @@ def apply_parallel(df_grouped, func):
 
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
-    stay_data2 = lpp_v2.select_area(raw_gps_file='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
-                                   map_file=None)
+    stay_data2 = lpp_v2.select_area(
+        raw_gps_file='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
+        map_file=None)
     container = lpp_v2.detect_home_work()
-    print(container)
+    sample = lpp_v2.extract_life_pattern()
+    print(sample)
     print('here')
