@@ -2,7 +2,10 @@ import os.path
 import warnings
 from japan_holidays import HolidayDataset
 import geopandas as gpd
+from sklearn.decomposition import NMF
 import matplotlib
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point
@@ -18,6 +21,7 @@ matplotlib.use('Agg')
 class LifePatternProcessor:
 
     def __init__(self):
+        self.pattern_probability_mat = None
         self.merged_tree = None
         self.tree_concat = None
         self.home_work_result = None
@@ -718,10 +722,61 @@ class LifePatternProcessor:
             return aaa
 
         pattern_probability = apply_parallel(self.tree_concat.groupby('user_id'), pattern_probability_matrix_individual)
+        self.pattern_probability_mat = pattern_probability
         return pattern_probability
 
-    def NMF_average(self, save_results, raw_gps_file, raw_gps_folder):
-        pass
+    def NMF_average(self, save_results=True, save_visualization=True):
+
+        # user_matrix_list = []
+        # user_id_list = []
+        # for i in range(len(filename_list)):
+        #     self.raw_gps_file = filename_list[i]
+            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+            # print(i, self.raw_gps_file)
+            # data = pd.read_csv(filepath_list[i], index_col=[0])
+        data = self.pattern_probability_mat
+        user_matrix_list = np.array(data).flatten('F')
+        user_id_list = self.tree_concat.user_id.unique()
+
+        # non-negative matrix factorization
+        user_matrix1 = np.array(user_matrix_list)
+        # print(0)
+        user_matrix = np.transpose(user_matrix1)
+        # print(1)
+        model = NMF(n_components=3, init='nndsvda')
+        # print(2)
+
+        w = model.fit_transform(user_matrix)
+
+        H = model.components_
+
+        df_w = pd.DataFrame(w)
+        df_h = pd.DataFrame(H)
+
+        # filename_df = pd.DataFrame(filename_list)
+        filename_df = pd.DataFrame(user_id_list)
+        if save_results:
+            # print('Saving NMF results...\n')
+            df_w.to_csv(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv', index=False)
+            df_h.to_csv(self.NMF_results_folder + 'H_multiple_HW_single_O_total_day.csv', index=False)
+            filename_df.to_csv(self.NMF_results_folder + 'filename_multiple_HW_single_O_total_day.csv', index=False)
+
+        # visualization
+        if save_visualization:
+            df_H = df_h.T
+
+            df_H['user_id'] = user_id_list
+            df_H.columns = ['x', 'y', 'z', 'user_id']
+
+            fig = plt.figure(figsize=(8, 5), dpi=300)
+            ax = Axes3D(fig, auto_add_to_figure=False)
+            fig.add_axes(ax)
+            ax.scatter(df_H['x'].values, df_H['y'].values, df_H['z'].values, s=20, marker='o')
+            ax.view_init(elev=35, azim=45)
+            plt.savefig(self.NMF_results_folder + 'demo_result.png')
+            plt.close()
+            # print('Visualization saved...\n')
+        return df_w, df_h, filename_df
 
     def plus_home_work_location(self, save_results):
         pass
