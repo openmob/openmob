@@ -778,11 +778,186 @@ class LifePatternProcessor:
             # print('Visualization saved...\n')
         return df_w, df_h, filename_df
 
-    def plus_home_work_location(self, save_results):
-        pass
+    def plus_home_work_location(self, save_results=False, new_gps_data=None):
 
-    def generate_group_HWO_join_area2(self, save_results):
-        pass
+        if self.initialize:
+            df_clustering_result = self.clustering()
+        else:
+            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+                df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+            else:
+                df_clustering_result = self.clustering(new_gps_data=new_gps_data)
+
+        for i in range(len(df_clustering_result)):
+
+            # print('processing:', i)
+
+            user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
+
+            # if os.path.exists('./')
+
+            # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
+            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+            # self.raw_gps_file = user_ID
+            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+            df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
+
+            df_home = df_home_work[df_home_work['home_label_order'] == 0]
+
+            df_work = df_home_work[df_home_work['work_label_order'] == 0]
+
+            if len(df_home) != 0:
+                home_lng = df_home['home_lon'].mean()
+                home_lat = df_home['home_lat'].mean()
+
+            if len(df_home) == 0:
+                home_lng = -1
+                home_lat = -1
+
+            if len(df_work) != 0:
+                work_lng = df_work['work_lon'].mean()
+                work_lat = df_work['work_lat'].mean()
+
+            if len(df_work) == 0:
+                work_lng = -1
+                work_lat = -1
+
+            df_clustering_result.loc[i, 'home_lat'] = home_lat
+            df_clustering_result.loc[i, 'home_lng'] = home_lng
+            df_clustering_result.loc[i, 'work_lat'] = work_lat
+            df_clustering_result.loc[i, 'work_lng'] = work_lng
+
+        if save_results:
+            if self.initialize:
+                df_clustering_result.to_csv(self.clustering_results_folder + '8_ID_XYZ_groupID_homeworklocation.csv')
+            else:
+                df_clustering_result.to_csv(self.clustering_results_folder + 'New_ID_XYZ_groupID_homeworklocation.csv')
+
+        # print('finish')
+
+    def csv2Point(self, data, LON, LAT, coordinate):
+
+        data_point = gpd.GeoDataFrame(data, geometry=gpd.points_from_xy(data[LON], data[LAT]), crs=coordinate)
+
+        return data_point
+
+    def Point2Name(self, SHP_PATH, POINT, COLUMNS, coordinate):
+
+        chome = gpd.read_file(SHP_PATH).to_crs({'init': coordinate})
+
+        COLUMNS.append('geometry')
+        chome = chome[COLUMNS]
+        join_point = gpd.sjoin(POINT, chome, how='left', op='intersects', lsuffix='left', rsuffix='right')
+        join_point = join_point.drop(['index_right', 'geometry'], axis=1)
+        return join_point
+
+    def generate_key_point_table(self, save_results=False, new_gps_data=None):
+
+        if os.path.exists(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv'):
+            df_totaltree = pd.read_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv')
+        else:
+            df_totaltree = self.merge_tree()
+        # df_totaltree = pd.read_csv(tree_index_dir + '//the_great_tokyo_total_tree_index.csv')
+        significant_place_list0 = df_totaltree['places'].tolist() + df_totaltree['next_places'].tolist()
+        significant_place_list = list(set(significant_place_list0))
+        significant_place_df = pd.DataFrame(significant_place_list, columns=['place_name'])
+        a = significant_place_df['place_name'].str.split("_", expand=True)
+        a.columns = ['place', 'order']
+        a.loc[:, 'order'] = a['order'].fillna(0)
+        a['order'] = a['order'].astype('int')
+        a = a.sort_values(['place', 'order'], ascending=[True, True])
+        b = pd.concat([a[a['place'] == 'H'], a[a['place'] == 'W'], a[a['place'] == 'O']])
+        b = b.reset_index(drop=True)
+
+        dic_ = {"H": 'home', "W": 'work', 'O': "other"}
+
+        # 2.find key point
+        chome = gpd.read_file('./gis/h12ka13.shp')
+        chome = chome[['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME', 'geometry']]
+        if self.initialize:
+            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+                df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+            else:
+                df_clustering_result = self.clustering()
+        else:
+            df_clustering_result = self.clustering(new_gps_data=new_gps_data)
+
+        for i in range(len(df_clustering_result)):
+
+            # print('processing:', i)
+
+            user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
+
+            # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
+            # self.raw_gps_file = user_ID
+            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+            df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
+
+            individual_key_point_df = b.copy()
+            individual_key_point_df['user_ID'] = user_ID
+
+            for k in range(len(individual_key_point_df)):
+                place = individual_key_point_df.loc[k, 'place']
+                order = individual_key_point_df.loc[k, 'order']
+
+                individual_key_point_df.loc[k, 'significant_place'] = place + '_' + str(order)
+                temp = df_home_work[df_home_work[dic_[place] + '_label_order'] == order]
+
+                if len(temp) != 0:
+                    Lng = temp[dic_[place] + '_lon'].mean()
+                    Lat = temp[dic_[place] + '_lat'].mean()
+                    mesh_code = ju.to_meshcode(Lat, Lng, 5)
+
+                    individual_key_point_df.loc[k, 'Lng'] = Lng
+                    individual_key_point_df.loc[k, 'Lat'] = Lat
+                    individual_key_point_df.loc[k, 'mesh_code'] = mesh_code
+
+            individual_key_point_df = individual_key_point_df.fillna(-1)
+
+            point = self.csv2Point(individual_key_point_df, 'Lng', 'Lat', 'EPSG:4326')
+            join_point = self.Point2Name('./gis/h12ka13.shp', point, ['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME'], 'EPSG:4326')
+            join_point = join_point.fillna(-1)
+            if save_results:
+                if not os.path.exists('./key_point_table/'):
+                    os.mkdir('./key_point_table/')
+                join_point.to_csv('./key_point_table/' + str(self.user_id) + '_key_point_table.csv', index=False)
+        return join_point
+
+    def generate_group_HWO_join_area2(self, save_results=False, new_gps_data=None):
+        if self.initialize:
+            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+                df = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+            else:
+                df = self.clustering()
+        else:
+            df = self.clustering(new_gps_data=new_gps_data)
+        # 或者df = pd.read_csv('9_conduct_same_cluster_as2013//2011_7_cluster_KMeans.csv')
+
+        for i in range(len(df)):
+            user_ID = str(df.loc[i, 'user_id']).zfill(8)
+            # df_1_user_stay = pd.read_csv(
+            #     '2_great_tokyo_detect_home_work_order' + '//' + userID + '_great_tokyo_labeled.csv')
+            # self.raw_gps_file = user_ID
+            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+            df_1_user_stay = self.detect_home_work(self.raw_gps_file)
+            df.loc[i, 'home_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lat'].mean()
+            df.loc[i, 'home_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lon'].mean()
+            df.loc[i, 'work_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lat'].mean()
+            df.loc[i, 'work_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lon'].mean()
+
+        df['home_Lat_WGS84'].fillna(-1, inplace=True)
+        df['home_Lng_WGS84'].fillna(-1, inplace=True)
+        df_point = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['home_Lng_WGS84'], df['home_Lat_WGS84']),
+                                    crs='EPSG:4326')
+        Tokyo_map = gpd.read_file('./gis/tokyo_area_satatistic.shp').to_crs({'init': 'EPSG:4326'})
+        Tokyo_map = Tokyo_map[['N03_001', 'N03_003', 'N03_004', 'geometry']]
+        join_point = gpd.sjoin(df_point, Tokyo_map, how='left', op='intersects', lsuffix='left', rsuffix='right')
+        join_point = join_point.drop(['index_right', 'geometry'], axis=1)
+        join_point = join_point.fillna(-1)
+        if save_results:
+            join_point.to_csv('./11_demo_7_group_HWO_join_area2.csv', index=False)
 
 
 def apply_parallel(df_grouped, func):
