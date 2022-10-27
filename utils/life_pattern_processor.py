@@ -18,6 +18,8 @@ matplotlib.use('Agg')
 class LifePatternProcessor:
 
     def __init__(self):
+        self.merged_tree = None
+        self.tree_concat = None
         self.home_work_result = None
         self.kept_data = None
         self.user_id_list = None
@@ -551,25 +553,25 @@ class LifePatternProcessor:
             try:
 
                 list_1w.append(df)
-                if k % 100 == 0 and k > 10:
-                    concat_1w = pd.concat(list_1w)
-                    concat_1W_2 = concat_1w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
-                    list_20w.append(concat_1W_2)
-                    list_1w = []
-                    j += 1
-                    # print('==========', 'file:', k, '==========')
-                    # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
+                # if k % 100 == 0 and k > 10:
+                concat_1w = pd.concat(list_1w)
+                concat_1W_2 = concat_1w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                list_20w.append(concat_1W_2)
+                list_1w = []
+                j += 1
+                # print('==========', 'file:', k, '==========')
+                # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
 
-                if k % 2000 == 0 and k > 100:
-                    concat_20w = pd.concat(list_20w)
-                    concat_20w_2 = concat_20w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
-                    list_total.append(concat_20w_2)
-                    list_20w = []
-                    m += 1
+                # if k % 2000 == 0 and k > 100:
+                concat_20w = pd.concat(list_20w)
+                concat_20w_2 = concat_20w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                list_total.append(concat_20w_2)
+                list_20w = []
+                m += 1
                     # print('==========', 'file:', k, '==========')
                     # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
             except Exception as e:
-                error_list.append([k, e])
+                error_list.append([e])
 
             if len(list_1w) != 0:
                 concat_1w_rest = pd.concat(list_1w)
@@ -592,10 +594,131 @@ class LifePatternProcessor:
             error_df = pd.DataFrame(error_list)
             # error_df.to_csv('3_4_except_error.csv', index=False)
             # print(1)
-            return tree_concat3, error_df
+            return tree_concat3
 
-    def merge_tree(self, save_support_tree):
-        pass
+        tree_concat = apply_parallel(self.life_pattern.groupby('user_id'), support_tree_individual)
+        self.tree_concat = tree_concat
+        return tree_concat
+
+    def merge_tree(self, save_support_tree=False):
+        # data, _ = self.support_tree()
+
+        # self.tree_concat.replace('O_*', 'O', inplace=True)
+        # data.replace('O_1', 'O', inplace=True)
+        # data.replace('O_2', 'O', inplace=True)
+        # data.replace('O_3', 'O', inplace=True)
+        # data.replace('O_4', 'O', inplace=True)
+        # data.replace('O_5', 'O', inplace=True)
+        # data.replace('O_6', 'O', inplace=True)
+        # data.replace('O_7', 'O', inplace=True)
+        # data.replace('O_8', 'O', inplace=True)
+        # data.replace('O_9', 'O', inplace=True)
+        # data.replace('O_10', 'O', inplace=True)
+        # data.replace('O_11', 'O', inplace=True)
+        # data.replace('O_12', 'O', inplace=True)
+        # data.replace('O_13', 'O', inplace=True)
+        # data.replace('O_14', 'O', inplace=True)
+        # data.replace('O_15', 'O', inplace=True)
+        # data.replace('O_16', 'O', inplace=True)
+        # data.replace('O_17', 'O', inplace=True)
+        # data.replace('O_18', 'O', inplace=True)
+        # data.replace('O_19', 'O', inplace=True)
+        # data.replace('O_20', 'O', inplace=True)
+        # data.replace('O_21', 'O', inplace=True)
+        # data.replace('O_22', 'O', inplace=True)
+        # data.replace('O_23', 'O', inplace=True)
+        # data.replace('O_24', 'O', inplace=True)
+        # data.replace('O_25', 'O', inplace=True)
+        # data.replace('O_26', 'O', inplace=True)
+        # data.replace('O_27', 'O', inplace=True)
+        # data.replace('O_28', 'O', inplace=True)
+        # data.replace('O_29', 'O', inplace=True)
+        # data.replace('O_30', 'O', inplace=True)
+
+        list_df = []
+        for key, item in self.tree_concat.groupby(by='time'):
+            time = key
+            df_one = item
+            df_one2 = df_one.drop_duplicates(subset=['places', 'next_places'], keep='first')
+            list_df.append(df_one2)
+
+        df_final = pd.concat(list_df, axis=0)
+
+        df_final2 = df_final.sort_values(by=['time', 'places', 'next_places'], ascending=True)
+        df_final2['tree_index'] = list(range(0, len(df_final2)))
+        if save_support_tree:
+            # print('Saving support tree...')
+            df_final2.to_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv', sep=',',
+                             encoding='utf-8')
+        self.merged_tree = df_final2
+        return df_final2
+
+    def pattern_probability_matrix(self, using_exit_tree=''):
+
+        if os.path.exists(using_exit_tree):
+            df_total_tree_index = pd.read_csv(using_exit_tree)
+        # if os.path.exists(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv'):
+        #     # print('Loading existing support tree...')
+        #     df_total_tree_index = pd.read_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv')
+        else:
+            print('No existing support tree...\nGenerating support tree...')
+            df_total_tree_index = self.merged_tree
+
+        # df.replace('O_0', 'O', inplace=True)
+        # df.replace('O_1', 'O', inplace=True)
+        # df.replace('O_2', 'O', inplace=True)
+        # df.replace('O_3', 'O', inplace=True)
+        # df.replace('O_4', 'O', inplace=True)
+        # df.replace('O_5', 'O', inplace=True)
+        # df.replace('O_6', 'O', inplace=True)
+        # df.replace('O_7', 'O', inplace=True)
+        # df.replace('O_8', 'O', inplace=True)
+        # df.replace('O_9', 'O', inplace=True)
+        # df.replace('O_10', 'O', inplace=True)
+        # df.replace('O_11', 'O', inplace=True)
+        # df.replace('O_12', 'O', inplace=True)
+        # df.replace('O_13', 'O', inplace=True)
+        # df.replace('O_14', 'O', inplace=True)
+        # df.replace('O_15', 'O', inplace=True)
+        # df.replace('O_16', 'O', inplace=True)
+        # df.replace('O_17', 'O', inplace=True)
+        # df.replace('O_18', 'O', inplace=True)
+        # df.replace('O_19', 'O', inplace=True)
+        # df.replace('O_20', 'O', inplace=True)
+        # df.replace('O_21', 'O', inplace=True)
+        # df.replace('O_22', 'O', inplace=True)
+        # df.replace('O_23', 'O', inplace=True)
+        # df.replace('O_24', 'O', inplace=True)
+        # df.replace('O_25', 'O', inplace=True)
+        # df.replace('O_26', 'O', inplace=True)
+        # df.replace('O_27', 'O', inplace=True)
+        # df.replace('O_28', 'O', inplace=True)
+        # df.replace('O_29', 'O', inplace=True)
+        # df.replace('O_30', 'O', inplace=True)
+        def pattern_probability_matrix_individual(df):
+            user_list = []
+            for key_day, item_day in df.groupby(by='date'):
+                df_1u_1day = item_day
+
+                date = key_day
+                df_one_user2 = df_1u_1day[['time', 'places', 'next_places']].copy()
+                df_one_user2.loc[:, 'attribute'] = 1
+
+                df_tree_total2 = df_total_tree_index[['tree_index', 'time', 'places', 'next_places']].copy()
+                df_user_matrix = pd.merge(df_tree_total2, df_one_user2, how='left')
+
+                df_user_matrix2 = df_user_matrix.fillna(0)
+                df_user_matrix3 = df_user_matrix2[['tree_index', 'attribute']].copy()
+                user_list.append(df_user_matrix3['attribute'])
+
+            df_user_concat = pd.concat(user_list, axis=1)
+            aaa = df_user_concat.mean(1)
+            # print(self.user_id)
+
+            return aaa
+
+        pattern_probability = apply_parallel(self.tree_concat.groupby('user_id'), pattern_probability_matrix_individual)
+        return pattern_probability
 
     def NMF_average(self, save_results, raw_gps_file, raw_gps_folder):
         pass
@@ -619,5 +742,8 @@ if __name__ == '__main__':
         map_file=None)
     container = lpp_v2.detect_home_work()
     sample = lpp_v2.extract_life_pattern()
-    print(sample)
+    support_tree = lpp_v2.support_tree()
+    merged_tree = lpp_v2.merge_tree(save_support_tree=False)
+    pattern_probability = lpp_v2.pattern_probability_matrix()
+    print(pattern_probability)
     print('here')
