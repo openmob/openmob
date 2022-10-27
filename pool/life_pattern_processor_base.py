@@ -620,7 +620,7 @@ class LifePatternProcessor:
 
     def merge_tree(self, save_support_tree=True):
 
-        data, _ = self.support_tree()
+        # data, _ = self.support_tree()
 
         data.replace('O_0', 'O', inplace=True)
         data.replace('O_1', 'O', inplace=True)
