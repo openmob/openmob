@@ -13,7 +13,7 @@ from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import NMF
 
-from japan_holidays import HolidayDataset
+import japan_holidays
 from openmob.pool import data_loader
 
 warnings.filterwarnings('ignore')
@@ -141,7 +141,7 @@ class LifePatternProcessor:
 
         self.kept_data['holiday'] = 0
         self.kept_data.loc[(self.kept_data['weekday'] == 6) | (self.kept_data['weekday'] == 7), 'holiday'] = 1
-        japan_holiday = HolidayDataset.HOLIDAYS.keys()
+        japan_holiday = japan_holidays.HolidayDataset.HOLIDAYS.keys()
         self.kept_data.loc[self.kept_data.arrival_time.dt.date.isin(japan_holiday), 'holiday'] = 1
 
         def _dbscan_individual(df):
