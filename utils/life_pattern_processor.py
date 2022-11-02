@@ -22,7 +22,13 @@ matplotlib.use('Agg')
 
 class LifePatternProcessor:
 
-    def __init__(self):
+    def __init__(self,
+                 clustering_results_folder='./clustering_results/',
+                 support_tree_folder='./support_tree/',
+                 nmf_results_folder='./nmf_results/',
+                 dbscan_min_samples=1,
+                 distance_for_eps=0.03,
+                 ):
         self.life_pattern = None
         self.pattern_probability_mat = None
         self.merged_tree = None
@@ -31,13 +37,13 @@ class LifePatternProcessor:
         self.kept_data = None
         self.user_id_list = None
         self.raw_gps_file = None
-        self.dbscan_min_samples = 3
-        self.distance_for_eps = 0.03
+        self.dbscan_min_samples = dbscan_min_samples
+        self.distance_for_eps = distance_for_eps
         self.map_file = None
-        self.clustering_results_folder = './clustering_results/'
-        self.support_tree_folder = './support_tree/'
+        self.clustering_results_folder = clustering_results_folder
+        self.support_tree_folder = support_tree_folder
         self.raw_gps_folder = None
-        self.NMF_results_folder = './nmf_results/'
+        self.NMF_results_folder = nmf_results_folder
         self.initialize = False
         self.kept_data = None
 

@@ -1,0 +1,1 @@
+from openmob.utils import life_pattern_processor

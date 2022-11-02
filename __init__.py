@@ -1,1 +1,1 @@
-from openmob import *
+from openmob import utils
