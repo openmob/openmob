@@ -1,17 +1,19 @@
+import multiprocessing
 import os.path
 import warnings
-from japan_holidays import HolidayDataset
+
 import geopandas as gpd
-from sklearn.decomposition import NMF
 import matplotlib
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
+from mpl_toolkits.mplot3d import Axes3D
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
-from joblib import Parallel, delayed
-import multiprocessing
+from sklearn.decomposition import NMF
+
+from japan_holidays import HolidayDataset
 from openmob.pool import data_loader
 
 warnings.filterwarnings('ignore')
@@ -21,6 +23,7 @@ matplotlib.use('Agg')
 class LifePatternProcessor:
 
     def __init__(self):
+        self.life_pattern = None
         self.pattern_probability_mat = None
         self.merged_tree = None
         self.tree_concat = None
@@ -28,23 +31,23 @@ class LifePatternProcessor:
         self.kept_data = None
         self.user_id_list = None
         self.raw_gps_file = None
-        self.dbscan_min_samples = 10
+        self.dbscan_min_samples = 3
         self.distance_for_eps = 0.03
         self.map_file = None
-        self.clustering_results_folder = None
-        self.support_tree_folder = None
+        self.clustering_results_folder = './clustering_results/'
+        self.support_tree_folder = './support_tree/'
         self.raw_gps_folder = None
-        self.NMF_results_folder = None
+        self.NMF_results_folder = './nmf_results/'
         self.initialize = False
         self.kept_data = None
 
-        if self.initialize:
-            self.create_folder()
-            self.merge_tree(save_support_tree=True)
-            self.NMF_average(save_results=True, raw_gps_file=self.raw_gps_file, raw_gps_folder=self.raw_gps_folder)
-            # self.clustering(save_model=True)
-            self.plus_home_work_location(save_results=True)
-            self.generate_group_HWO_join_area2(save_results=True)
+        # if self.initialize:
+        self.create_folder()
+        #     self.merge_tree(save_support_tree=True)
+        #     self.NMF_average(save_results=True, raw_gps_file=self.raw_gps_file, raw_gps_folder=self.raw_gps_folder)
+        #     # self.clustering(save_model=True)
+        #     self.plus_home_work_location(save_results=True)
+        #     self.generate_group_HWO_join_area2(save_results=True)
 
     def create_folder(self):
 
@@ -79,8 +82,6 @@ class LifePatternProcessor:
             stay_data20['lon'] = stay_data20['lon'].astype(float)
             stay_data20['lat'] = stay_data20['lat'].astype(float)
 
-            # delete records which are not located in Japan.
-            # stay_data20 = stay_data20[(stay_data20['lon'] >= 125) & (stay_data20['lat'] >= 20)]  # 不在日本境内的被剔除
             stay_data3 = stay_data20.reset_index(drop=True)
 
             stay_data3['hour'] = pd.to_datetime(stay_data3['arrival_time']).dt.hour
@@ -130,8 +131,6 @@ class LifePatternProcessor:
 
     def detect_home_work(self):
 
-        # if self.kept_data is None:
-        #     self.select_area(self.raw_gps_file, self.map_file)
         # assign holidays
 
         self.kept_data['holiday'] = 0
@@ -139,7 +138,7 @@ class LifePatternProcessor:
         japan_holiday = HolidayDataset.HOLIDAYS.keys()
         self.kept_data.loc[self.kept_data.arrival_time.dt.date.isin(japan_holiday), 'holiday'] = 1
 
-        def dbscan_individual(df):
+        def _dbscan_individual(df):
 
             df = df.reset_index(drop=True)
             row_id = df.index.tolist()
@@ -347,14 +346,11 @@ class LifePatternProcessor:
                     home_group['original_other_label'] = -1
 
                     home_group_0 = home_group[
-                        ['user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon',
-                         'hour',
-                         'end_hour', 'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id',
-                         'all_detect_label', 'home_label', 'work_label', 'home_label_new', 'work_label_new',
-                         'other_label_new',
+                        ['user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon', 'hour', 'end_hour',
+                         'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id', 'all_detect_label',
+                         'home_label', 'work_label', 'home_label_new', 'work_label_new', 'other_label_new',
                          'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon',
-                         'work_lat',
-                         'work_lon', 'other_lat', 'other_lon']]
+                         'work_lat', 'work_lon', 'other_lat', 'other_lon']]
 
                     new_list.append(home_group_0)
 
@@ -373,14 +369,12 @@ class LifePatternProcessor:
                     work_group['other_label_order'] = -1
                     work_group['original_other_label'] = -1
 
-                    work_group_0 = work_group[[
-                        'user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon',
-                        'hour',
-                        'end_hour', 'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id',
-                        'all_detect_label', 'home_label', 'work_label', 'home_label_new', 'work_label_new',
-                        'other_label_new',
-                        'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon', 'work_lat',
-                        'work_lon', 'other_lat', 'other_lon']]
+                    work_group_0 = work_group[
+                        ['user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon', 'hour', 'end_hour',
+                         'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id', 'all_detect_label',
+                         'home_label', 'work_label', 'home_label_new', 'work_label_new', 'other_label_new',
+                         'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon',
+                         'work_lat', 'work_lon', 'other_lat', 'other_lon']]
 
                     new_list.append(work_group_0)
 
@@ -399,14 +393,12 @@ class LifePatternProcessor:
                     other_group['work_label_order'] = -1
                     other_group['work_other_label'] = -1
 
-                    other_group_0 = other_group[[
-                        'user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon',
-                        'hour',
-                        'end_hour', 'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id',
-                        'all_detect_label', 'home_label', 'work_label', 'home_label_new', 'work_label_new',
-                        'other_label_new',
-                        'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon', 'work_lat',
-                        'work_lon', 'other_lat', 'other_lon']]
+                    other_group_0 = other_group[
+                        ['user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon', 'hour', 'end_hour',
+                         'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id', 'all_detect_label',
+                         'home_label', 'work_label', 'home_label_new', 'work_label_new', 'other_label_new',
+                         'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon',
+                         'work_lat', 'work_lon', 'other_lat', 'other_lon']]
 
                     new_list.append(other_group_0)
 
@@ -418,20 +410,18 @@ class LifePatternProcessor:
                     noise_group['original_other_label'] = -1
                     noise_group['home_label_order'] = -1
                     noise_group['original_home_label'] = -1
-                    noise_group_0 = noise_group[[
-                        'user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon',
-                        'hour',
-                        'end_hour', 'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id',
-                        'all_detect_label', 'home_label', 'work_label', 'home_label_new', 'work_label_new',
-                        'other_label_new',
-                        'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon', 'work_lat',
-                        'work_lon', 'other_lat', 'other_lon']]
+                    noise_group_0 = noise_group[
+                        ['user_id', 'day', 'arrival_time', 'departure_time', 'lat', 'lon', 'hour', 'end_hour',
+                         'weekday', 'holiday', 'time_period', 'time_period_second', 'row_id', 'all_detect_label',
+                         'home_label', 'work_label', 'home_label_new', 'work_label_new', 'other_label_new',
+                         'home_label_order', 'work_label_order', 'other_label_order', 'home_lat', 'home_lon',
+                         'work_lat', 'work_lon', 'other_lat', 'other_lon']]
 
                     new_list.append(noise_group_0)
 
-                final_result = pd.concat(new_list, axis=0)
+                _final_result = pd.concat(new_list, axis=0)
 
-                final_result_home = final_result[final_result['home_label_order'] != -1]
+                final_result_home = _final_result[_final_result['home_label_order'] != -1]
 
                 if self.map_file is not None:
                     great_tokyo_map = gpd.GeoDataFrame.from_file(self.map_file)
@@ -449,39 +439,36 @@ class LifePatternProcessor:
                     df_final_within = final_result_home
 
                 if len(df_final_within) != 0:
-                    final_result2 = final_result.sort_values(by='arrival_time')
+                    final_result2 = _final_result.sort_values(by='arrival_time')
                     return final_result2
             return
 
-        final_result = apply_parallel(self.kept_data.groupby('user_id'), dbscan_individual)
+        final_result = apply_parallel(self.kept_data.groupby('user_id'), _dbscan_individual)
         self.home_work_result = final_result
         return final_result
 
     def extract_life_pattern(self):
 
-        def extract_life_pattern_individual(df0):
+        def _extract_life_pattern(df0):
             df_list = []
 
-            for key_day, item_day in df0.groupby(by=['day']):  # 拆分每个用户每一天
+            for key_day, item_day in df0.groupby(by=['day']):
                 date = key_day
                 df0 = item_day.copy()
 
-                # 如果有同一小时内的记录，保留停留时间较长的那条
-                df00 = df0.sort_values('time_period_second').drop_duplicates(['hour'],
-                                                                             keep='last')  # ascending = True 为升序，默认
+                df00 = df0.sort_values('time_period_second').drop_duplicates(['hour'], keep='last')
                 df00['arrival_time'] = pd.to_datetime(df00['arrival_time'])
-                df = df00.sort_values(by='arrival_time')
+                _df = df00.sort_values(by='arrival_time')
 
-                week_day = df['weekday'].mean()
-                holiday = df['holiday'].mean()
-
-                # 从0点到23点 填充记录
+                week_day = _df['weekday'].mean()
+                holiday = _df['holiday'].mean()
 
                 df_date = pd.DataFrame({'time': list(range(0, 24)), 'places': [-1] * 24})
-                for t, row in df.iterrows():
+                for t, row in _df.iterrows():
                     s_time = row['hour']
                     e_time = row['end_hour']
-                    if (row['home_label_order'] == -1) & (row['work_label_order'] == -1) & (row['other_label_order'] == -1):
+                    if (row['home_label_order'] == -1) & (row['work_label_order'] == -1) & (
+                            row['other_label_order'] == -1):
                         pass
                     else:
                         if (row['home_label_order'] != -1) & (row['work_label_order'] == -1) & (
@@ -500,7 +487,6 @@ class LifePatternProcessor:
                             df_date.loc[df_date['time'] == s_time, 'places'] = other_label
                             df_date.loc[df_date['time'] == e_time, 'places'] = other_label
 
-                # 补足没有记录的行
                 places_index = list(df_date[df_date['places'] != -1].index)
                 if len(places_index) != 0:
                     places_split = np.split(df_date, places_index, axis=0)
@@ -509,7 +495,7 @@ class LifePatternProcessor:
                         if j == 0:
                             places_df = places_split[j].copy()
 
-                            home_order = df[df['home_label_order'] != -1]
+                            home_order = _df[_df['home_label_order'] != -1]
                             if len(home_order) != 0:
                                 home_num = home_order['home_label_order'].min()
                                 places_df['places'] = 'H' + '_' + str(home_num)
@@ -539,109 +525,62 @@ class LifePatternProcessor:
             else:
                 return
 
-        df = apply_parallel(self.home_work_result.groupby('user_id'), extract_life_pattern_individual)
+        df = apply_parallel(self.home_work_result.groupby('user_id'), _extract_life_pattern)
         self.life_pattern = df
         return df
-
 
     def support_tree(self):
 
         # concat all the possible node of the tree and drop duplicate node.
-        def support_tree_individual(df):
-            error_list = []
+        def _support_tree(df):
             list_1w = []
             list_20w = []
             list_total = []
-            j = 0
-            m = 0
+
             try:
 
                 list_1w.append(df)
-                # if k % 100 == 0 and k > 10:
                 concat_1w = pd.concat(list_1w)
-                concat_1W_2 = concat_1w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
-                list_20w.append(concat_1W_2)
+                _concat_1W_2 = concat_1w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                list_20w.append(_concat_1W_2)
                 list_1w = []
-                j += 1
-                # print('==========', 'file:', k, '==========')
-                # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
 
-                # if k % 2000 == 0 and k > 100:
                 concat_20w = pd.concat(list_20w)
                 concat_20w_2 = concat_20w.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
                 list_total.append(concat_20w_2)
                 list_20w = []
-                m += 1
-                    # print('==========', 'file:', k, '==========')
-                    # print('==========', 'progress 1W:', j, 'progress 20w:', m, '==========')
-            except Exception as e:
-                error_list.append([e])
+
+            except OSError:
+                print('ERROR.')
 
             if len(list_1w) != 0:
                 concat_1w_rest = pd.concat(list_1w)
-                concat_1W_rest_2 = concat_1w_rest.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
-                list_total.append(concat_1W_rest_2)
+                _concat_1W_rest_2 = concat_1w_rest.drop_duplicates(subset=['time', 'places', 'next_places'],
+                                                                   keep='first')
+                list_total.append(_concat_1W_rest_2)
 
             if len(list_20w) != 0:
                 concat_20w_rest = pd.concat(list_20w)
-                concat_20w_rest_2 = concat_20w_rest.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
+                concat_20w_rest_2 = concat_20w_rest.drop_duplicates(subset=['time', 'places', 'next_places'],
+                                                                    keep='first')
                 list_total.append(concat_20w_rest_2)
 
-            tree_concat = pd.concat(list_total)
-            tree_concat2 = tree_concat.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
-            # print(len(tree_concat), len(tree_concat2))
+            _tree_concat = pd.concat(list_total)
+            tree_concat2 = _tree_concat.drop_duplicates(subset=['time', 'places', 'next_places'], keep='first')
             tree_concat3 = tree_concat2.sort_values(by=['time', 'places', 'next_places'], ascending=True)
 
             # give each node a  unique index
             tree_concat3['tree_index'] = list(range(0, len(tree_concat3)))
-            # tree_concat3.to_csv(done_dir + '//demo_tree_index.csv', index=False)
-            error_df = pd.DataFrame(error_list)
-            # error_df.to_csv('3_4_except_error.csv', index=False)
-            # print(1)
             return tree_concat3
 
-        tree_concat = apply_parallel(self.life_pattern.groupby('user_id'), support_tree_individual)
+        tree_concat = apply_parallel(self.life_pattern.groupby('user_id'), _support_tree)
         self.tree_concat = tree_concat
         return tree_concat
 
     def merge_tree(self, save_support_tree=False):
-        # data, _ = self.support_tree()
-
-        # self.tree_concat.replace('O_*', 'O', inplace=True)
-        # data.replace('O_1', 'O', inplace=True)
-        # data.replace('O_2', 'O', inplace=True)
-        # data.replace('O_3', 'O', inplace=True)
-        # data.replace('O_4', 'O', inplace=True)
-        # data.replace('O_5', 'O', inplace=True)
-        # data.replace('O_6', 'O', inplace=True)
-        # data.replace('O_7', 'O', inplace=True)
-        # data.replace('O_8', 'O', inplace=True)
-        # data.replace('O_9', 'O', inplace=True)
-        # data.replace('O_10', 'O', inplace=True)
-        # data.replace('O_11', 'O', inplace=True)
-        # data.replace('O_12', 'O', inplace=True)
-        # data.replace('O_13', 'O', inplace=True)
-        # data.replace('O_14', 'O', inplace=True)
-        # data.replace('O_15', 'O', inplace=True)
-        # data.replace('O_16', 'O', inplace=True)
-        # data.replace('O_17', 'O', inplace=True)
-        # data.replace('O_18', 'O', inplace=True)
-        # data.replace('O_19', 'O', inplace=True)
-        # data.replace('O_20', 'O', inplace=True)
-        # data.replace('O_21', 'O', inplace=True)
-        # data.replace('O_22', 'O', inplace=True)
-        # data.replace('O_23', 'O', inplace=True)
-        # data.replace('O_24', 'O', inplace=True)
-        # data.replace('O_25', 'O', inplace=True)
-        # data.replace('O_26', 'O', inplace=True)
-        # data.replace('O_27', 'O', inplace=True)
-        # data.replace('O_28', 'O', inplace=True)
-        # data.replace('O_29', 'O', inplace=True)
-        # data.replace('O_30', 'O', inplace=True)
 
         list_df = []
         for key, item in self.tree_concat.groupby(by='time'):
-            time = key
             df_one = item
             df_one2 = df_one.drop_duplicates(subset=['places', 'next_places'], keep='first')
             list_df.append(df_one2)
@@ -651,60 +590,27 @@ class LifePatternProcessor:
         df_final2 = df_final.sort_values(by=['time', 'places', 'next_places'], ascending=True)
         df_final2['tree_index'] = list(range(0, len(df_final2)))
         if save_support_tree:
-            # print('Saving support tree...')
+
             df_final2.to_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv', sep=',',
                              encoding='utf-8')
         self.merged_tree = df_final2
+
         return df_final2
 
     def pattern_probability_matrix(self, using_exit_tree=''):
 
         if os.path.exists(using_exit_tree):
             df_total_tree_index = pd.read_csv(using_exit_tree)
-        # if os.path.exists(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv'):
-        #     # print('Loading existing support tree...')
-        #     df_total_tree_index = pd.read_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv')
+
         else:
             print('No existing support tree...\nGenerating support tree...')
             df_total_tree_index = self.merged_tree
 
-        # df.replace('O_0', 'O', inplace=True)
-        # df.replace('O_1', 'O', inplace=True)
-        # df.replace('O_2', 'O', inplace=True)
-        # df.replace('O_3', 'O', inplace=True)
-        # df.replace('O_4', 'O', inplace=True)
-        # df.replace('O_5', 'O', inplace=True)
-        # df.replace('O_6', 'O', inplace=True)
-        # df.replace('O_7', 'O', inplace=True)
-        # df.replace('O_8', 'O', inplace=True)
-        # df.replace('O_9', 'O', inplace=True)
-        # df.replace('O_10', 'O', inplace=True)
-        # df.replace('O_11', 'O', inplace=True)
-        # df.replace('O_12', 'O', inplace=True)
-        # df.replace('O_13', 'O', inplace=True)
-        # df.replace('O_14', 'O', inplace=True)
-        # df.replace('O_15', 'O', inplace=True)
-        # df.replace('O_16', 'O', inplace=True)
-        # df.replace('O_17', 'O', inplace=True)
-        # df.replace('O_18', 'O', inplace=True)
-        # df.replace('O_19', 'O', inplace=True)
-        # df.replace('O_20', 'O', inplace=True)
-        # df.replace('O_21', 'O', inplace=True)
-        # df.replace('O_22', 'O', inplace=True)
-        # df.replace('O_23', 'O', inplace=True)
-        # df.replace('O_24', 'O', inplace=True)
-        # df.replace('O_25', 'O', inplace=True)
-        # df.replace('O_26', 'O', inplace=True)
-        # df.replace('O_27', 'O', inplace=True)
-        # df.replace('O_28', 'O', inplace=True)
-        # df.replace('O_29', 'O', inplace=True)
-        # df.replace('O_30', 'O', inplace=True)
-        def pattern_probability_matrix_individual(df):
+        def _pattern_probability_matrix(df):
             user_list = []
             for key_day, item_day in df.groupby(by='date'):
                 df_1u_1day = item_day
 
-                date = key_day
                 df_one_user2 = df_1u_1day[['time', 'places', 'next_places']].copy()
                 df_one_user2.loc[:, 'attribute'] = 1
 
@@ -717,248 +623,241 @@ class LifePatternProcessor:
 
             df_user_concat = pd.concat(user_list, axis=1)
             aaa = df_user_concat.mean(1)
-            # print(self.user_id)
 
-            return aaa
+            return pd.DataFrame(aaa).T
 
-        pattern_probability = apply_parallel(self.tree_concat.groupby('user_id'), pattern_probability_matrix_individual)
-        self.pattern_probability_mat = pattern_probability
-        return pattern_probability
+        _pattern_probability = apply_parallel(self.tree_concat.groupby('user_id'), _pattern_probability_matrix)
+        self.pattern_probability_mat = _pattern_probability
+        return _pattern_probability
 
-    def NMF_average(self, save_results=True, save_visualization=True):
+    def nmf_average(self, save_results=True, save_visualization=True):
 
-        # user_matrix_list = []
-        # user_id_list = []
-        # for i in range(len(filename_list)):
-        #     self.raw_gps_file = filename_list[i]
-            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
-            # print(i, self.raw_gps_file)
-            # data = pd.read_csv(filepath_list[i], index_col=[0])
         data = self.pattern_probability_mat
-        user_matrix_list = np.array(data).flatten('F')
+        # user_matrix_list = np.array(data).flatten('F')
+        user_matrix_list = np.array(data)
         user_id_list = self.tree_concat.user_id.unique()
 
         # non-negative matrix factorization
         user_matrix1 = np.array(user_matrix_list)
-        # print(0)
         user_matrix = np.transpose(user_matrix1)
-        # print(1)
+
         model = NMF(n_components=3, init='nndsvda')
-        # print(2)
 
         w = model.fit_transform(user_matrix)
 
-        H = model.components_
+        h = model.components_
 
         df_w = pd.DataFrame(w)
-        df_h = pd.DataFrame(H)
+        df_h = pd.DataFrame(h)
 
         # filename_df = pd.DataFrame(filename_list)
         filename_df = pd.DataFrame(user_id_list)
 
         if save_results:
-            # print('Saving NMF results...\n')
+
             df_w.to_csv(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv', index=False)
             df_h.to_csv(self.NMF_results_folder + 'H_multiple_HW_single_O_total_day.csv', index=False)
             filename_df.to_csv(self.NMF_results_folder + 'filename_multiple_HW_single_O_total_day.csv', index=False)
 
         # visualization
         if save_visualization:
-            df_H = df_h.T
+            df_h_ = df_h.T
 
-            df_H['user_id'] = user_id_list
-            df_H.columns = ['x', 'y', 'z', 'user_id']
+            df_h_['user_id'] = user_id_list
+            df_h_.columns = ['x', 'y', 'z', 'user_id']
 
             fig = plt.figure(figsize=(8, 5), dpi=300)
             ax = Axes3D(fig, auto_add_to_figure=False)
             fig.add_axes(ax)
-            ax.scatter(df_H['x'].values, df_H['y'].values, df_H['z'].values, s=20, marker='o')
+            ax.scatter(df_h_['x'].values, df_h_['y'].values, df_h_['z'].values, s=20, marker='o')
             ax.view_init(elev=35, azim=45)
             plt.savefig(self.NMF_results_folder + 'demo_result.png')
             plt.close()
-            # print('Visualization saved...\n')
+
         return df_w, df_h, filename_df
 
-    def plus_home_work_location(self, save_results=False, new_gps_data=None):
-
-        if self.initialize:
-            df_clustering_result = self.clustering()
-        else:
-            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
-                df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
-            else:
-                df_clustering_result = self.clustering(new_gps_data=new_gps_data)
-
-        for i in range(len(df_clustering_result)):
-
-            # print('processing:', i)
-
-            user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
-
-            # if os.path.exists('./')
-
-            # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
-            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
-            # self.raw_gps_file = user_ID
-            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
-            df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
-
-            df_home = df_home_work[df_home_work['home_label_order'] == 0]
-
-            df_work = df_home_work[df_home_work['work_label_order'] == 0]
-
-            if len(df_home) != 0:
-                home_lng = df_home['home_lon'].mean()
-                home_lat = df_home['home_lat'].mean()
-
-            if len(df_home) == 0:
-                home_lng = -1
-                home_lat = -1
-
-            if len(df_work) != 0:
-                work_lng = df_work['work_lon'].mean()
-                work_lat = df_work['work_lat'].mean()
-
-            if len(df_work) == 0:
-                work_lng = -1
-                work_lat = -1
-
-            df_clustering_result.loc[i, 'home_lat'] = home_lat
-            df_clustering_result.loc[i, 'home_lng'] = home_lng
-            df_clustering_result.loc[i, 'work_lat'] = work_lat
-            df_clustering_result.loc[i, 'work_lng'] = work_lng
-
-        if save_results:
-            if self.initialize:
-                df_clustering_result.to_csv(self.clustering_results_folder + '8_ID_XYZ_groupID_homeworklocation.csv')
-            else:
-                df_clustering_result.to_csv(self.clustering_results_folder + 'New_ID_XYZ_groupID_homeworklocation.csv')
-
-        # print('finish')
-
-    def csv2Point(self, data, LON, LAT, coordinate):
-
-        data_point = gpd.GeoDataFrame(data, geometry=gpd.points_from_xy(data[LON], data[LAT]), crs=coordinate)
-
-        return data_point
-
-    def Point2Name(self, SHP_PATH, POINT, COLUMNS, coordinate):
-
-        chome = gpd.read_file(SHP_PATH).to_crs({'init': coordinate})
-
-        COLUMNS.append('geometry')
-        chome = chome[COLUMNS]
-        join_point = gpd.sjoin(POINT, chome, how='left', op='intersects', lsuffix='left', rsuffix='right')
-        join_point = join_point.drop(['index_right', 'geometry'], axis=1)
-        return join_point
-
-    def generate_key_point_table(self, save_results=False, new_gps_data=None):
-
-        if os.path.exists(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv'):
-            df_totaltree = pd.read_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv')
-        else:
-            df_totaltree = self.merge_tree()
-        # df_totaltree = pd.read_csv(tree_index_dir + '//the_great_tokyo_total_tree_index.csv')
-        significant_place_list0 = df_totaltree['places'].tolist() + df_totaltree['next_places'].tolist()
-        significant_place_list = list(set(significant_place_list0))
-        significant_place_df = pd.DataFrame(significant_place_list, columns=['place_name'])
-        a = significant_place_df['place_name'].str.split("_", expand=True)
-        a.columns = ['place', 'order']
-        a.loc[:, 'order'] = a['order'].fillna(0)
-        a['order'] = a['order'].astype('int')
-        a = a.sort_values(['place', 'order'], ascending=[True, True])
-        b = pd.concat([a[a['place'] == 'H'], a[a['place'] == 'W'], a[a['place'] == 'O']])
-        b = b.reset_index(drop=True)
-
-        dic_ = {"H": 'home', "W": 'work', 'O': "other"}
-
-        # 2.find key point
-        chome = gpd.read_file('./gis/h12ka13.shp')
-        chome = chome[['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME', 'geometry']]
-        if self.initialize:
-            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
-                df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
-            else:
-                df_clustering_result = self.clustering()
-        else:
-            df_clustering_result = self.clustering(new_gps_data=new_gps_data)
-
-        for i in range(len(df_clustering_result)):
-
-            # print('processing:', i)
-
-            user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
-
-            # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
-            # self.raw_gps_file = user_ID
-            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
-            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
-            df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
-
-            individual_key_point_df = b.copy()
-            individual_key_point_df['user_ID'] = user_ID
-
-            for k in range(len(individual_key_point_df)):
-                place = individual_key_point_df.loc[k, 'place']
-                order = individual_key_point_df.loc[k, 'order']
-
-                individual_key_point_df.loc[k, 'significant_place'] = place + '_' + str(order)
-                temp = df_home_work[df_home_work[dic_[place] + '_label_order'] == order]
-
-                if len(temp) != 0:
-                    Lng = temp[dic_[place] + '_lon'].mean()
-                    Lat = temp[dic_[place] + '_lat'].mean()
-                    mesh_code = ju.to_meshcode(Lat, Lng, 5)
-
-                    individual_key_point_df.loc[k, 'Lng'] = Lng
-                    individual_key_point_df.loc[k, 'Lat'] = Lat
-                    individual_key_point_df.loc[k, 'mesh_code'] = mesh_code
-
-            individual_key_point_df = individual_key_point_df.fillna(-1)
-
-            point = self.csv2Point(individual_key_point_df, 'Lng', 'Lat', 'EPSG:4326')
-            join_point = self.Point2Name('./gis/h12ka13.shp', point, ['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME'], 'EPSG:4326')
-            join_point = join_point.fillna(-1)
-            if save_results:
-                if not os.path.exists('./key_point_table/'):
-                    os.mkdir('./key_point_table/')
-                join_point.to_csv('./key_point_table/' + str(self.user_id) + '_key_point_table.csv', index=False)
-        return join_point
-
-    def generate_group_HWO_join_area2(self, save_results=False, new_gps_data=None):
-        if self.initialize:
-            if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
-                df = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
-            else:
-                df = self.clustering()
-        else:
-            df = self.clustering(new_gps_data=new_gps_data)
-        # 或者df = pd.read_csv('9_conduct_same_cluster_as2013//2011_7_cluster_KMeans.csv')
-
-        for i in range(len(df)):
-            user_ID = str(df.loc[i, 'user_id']).zfill(8)
-            # df_1_user_stay = pd.read_csv(
-            #     '2_great_tokyo_detect_home_work_order' + '//' + userID + '_great_tokyo_labeled.csv')
-            # self.raw_gps_file = user_ID
-            self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
-            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
-            df_1_user_stay = self.detect_home_work(self.raw_gps_file)
-            df.loc[i, 'home_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lat'].mean()
-            df.loc[i, 'home_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lon'].mean()
-            df.loc[i, 'work_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lat'].mean()
-            df.loc[i, 'work_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lon'].mean()
-
-        df['home_Lat_WGS84'].fillna(-1, inplace=True)
-        df['home_Lng_WGS84'].fillna(-1, inplace=True)
-        df_point = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['home_Lng_WGS84'], df['home_Lat_WGS84']),
-                                    crs='EPSG:4326')
-        Tokyo_map = gpd.read_file('./gis/tokyo_area_satatistic.shp').to_crs({'init': 'EPSG:4326'})
-        Tokyo_map = Tokyo_map[['N03_001', 'N03_003', 'N03_004', 'geometry']]
-        join_point = gpd.sjoin(df_point, Tokyo_map, how='left', op='intersects', lsuffix='left', rsuffix='right')
-        join_point = join_point.drop(['index_right', 'geometry'], axis=1)
-        join_point = join_point.fillna(-1)
-        if save_results:
-            join_point.to_csv('./11_demo_7_group_HWO_join_area2.csv', index=False)
+    # def plus_home_work_location(self, save_results=False, new_gps_data=None):
+    #
+    #     if self.initialize:
+    #         df_clustering_result = self.clustering()
+    #     else:
+    #         if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+    #             df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+    #         else:
+    #             df_clustering_result = self.clustering(new_gps_data=new_gps_data)
+    #
+    #     for i in range(len(df_clustering_result)):
+    #
+    #         # print('processing:', i)
+    #
+    #         user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
+    #
+    #         # if os.path.exists('./')
+    #
+    #         # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
+    #         self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+    #         # self.raw_gps_file = user_ID
+    #         # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+    #         df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
+    #
+    #         df_home = df_home_work[df_home_work['home_label_order'] == 0]
+    #
+    #         df_work = df_home_work[df_home_work['work_label_order'] == 0]
+    #
+    #         if len(df_home) != 0:
+    #             home_lng = df_home['home_lon'].mean()
+    #             home_lat = df_home['home_lat'].mean()
+    #
+    #         if len(df_home) == 0:
+    #             home_lng = -1
+    #             home_lat = -1
+    #
+    #         if len(df_work) != 0:
+    #             work_lng = df_work['work_lon'].mean()
+    #             work_lat = df_work['work_lat'].mean()
+    #
+    #         if len(df_work) == 0:
+    #             work_lng = -1
+    #             work_lat = -1
+    #
+    #         df_clustering_result.loc[i, 'home_lat'] = home_lat
+    #         df_clustering_result.loc[i, 'home_lng'] = home_lng
+    #         df_clustering_result.loc[i, 'work_lat'] = work_lat
+    #         df_clustering_result.loc[i, 'work_lng'] = work_lng
+    #
+    #     if save_results:
+    #         if self.initialize:
+    #             df_clustering_result.to_csv(self.clustering_results_folder + '8_ID_XYZ_groupID_homeworklocation.csv')
+    #         else:
+    #             df_clustering_result.to_csv(
+    #             self.clustering_results_folder + 'New_ID_XYZ_groupID_homeworklocation.csv')
+    #
+    #     # print('finish')
+    #
+    # def csv2Point(self, data, LON, LAT, coordinate):
+    #
+    #     data_point = gpd.GeoDataFrame(data, geometry=gpd.points_from_xy(data[LON], data[LAT]), crs=coordinate)
+    #
+    #     return data_point
+    #
+    # def Point2Name(self, SHP_PATH, POINT, COLUMNS, coordinate):
+    #
+    #     chome = gpd.read_file(SHP_PATH).to_crs({'init': coordinate})
+    #
+    #     COLUMNS.append('geometry')
+    #     chome = chome[COLUMNS]
+    #     join_point = gpd.sjoin(POINT, chome, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    #     join_point = join_point.drop(['index_right', 'geometry'], axis=1)
+    #     return join_point
+    #
+    # def generate_key_point_table(self, save_results=False, new_gps_data=None):
+    #
+    #     if os.path.exists(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv'):
+    #         df_totaltree = pd.read_csv(self.support_tree_folder + 'demo_tree_index_multiple_HW_single_O.csv')
+    #     else:
+    #         df_totaltree = self.merge_tree()
+    #     # df_totaltree = pd.read_csv(tree_index_dir + '//the_great_tokyo_total_tree_index.csv')
+    #     significant_place_list0 = df_totaltree['places'].tolist() + df_totaltree['next_places'].tolist()
+    #     significant_place_list = list(set(significant_place_list0))
+    #     significant_place_df = pd.DataFrame(significant_place_list, columns=['place_name'])
+    #     a = significant_place_df['place_name'].str.split("_", expand=True)
+    #     a.columns = ['place', 'order']
+    #     a.loc[:, 'order'] = a['order'].fillna(0)
+    #     a['order'] = a['order'].astype('int')
+    #     a = a.sort_values(['place', 'order'], ascending=[True, True])
+    #     b = pd.concat([a[a['place'] == 'H'], a[a['place'] == 'W'], a[a['place'] == 'O']])
+    #     b = b.reset_index(drop=True)
+    #
+    #     dic_ = {"H": 'home', "W": 'work', 'O': "other"}
+    #
+    #     # 2.find key point
+    #     chome = gpd.read_file('./gis/h12ka13.shp')
+    #     chome = chome[['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME', 'geometry']]
+    #     if self.initialize:
+    #         if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+    #             df_clustering_result = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+    #         else:
+    #             df_clustering_result = self.clustering()
+    #     else:
+    #         df_clustering_result = self.clustering(new_gps_data=new_gps_data)
+    #
+    #     for i in range(len(df_clustering_result)):
+    #
+    #         # print('processing:', i)
+    #
+    #         user_ID = str(df_clustering_result.loc[i, 'user_id']).zfill(8)
+    #
+    #         # df_home_work = pd.read_csv(home_work_location_dir + '//' + user_ID + '_great_tokyo_labeled.csv')
+    #         # self.raw_gps_file = user_ID
+    #         self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+    #         # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+    #         df_home_work = self.detect_home_work(raw_gps_file=self.raw_gps_file)
+    #
+    #         individual_key_point_df = b.copy()
+    #         individual_key_point_df['user_ID'] = user_ID
+    #
+    #         for k in range(len(individual_key_point_df)):
+    #             place = individual_key_point_df.loc[k, 'place']
+    #             order = individual_key_point_df.loc[k, 'order']
+    #
+    #             individual_key_point_df.loc[k, 'significant_place'] = place + '_' + str(order)
+    #             temp = df_home_work[df_home_work[dic_[place] + '_label_order'] == order]
+    #
+    #             if len(temp) != 0:
+    #                 Lng = temp[dic_[place] + '_lon'].mean()
+    #                 Lat = temp[dic_[place] + '_lat'].mean()
+    #                 mesh_code = ju.to_meshcode(Lat, Lng, 5)
+    #
+    #                 individual_key_point_df.loc[k, 'Lng'] = Lng
+    #                 individual_key_point_df.loc[k, 'Lat'] = Lat
+    #                 individual_key_point_df.loc[k, 'mesh_code'] = mesh_code
+    #
+    #         individual_key_point_df = individual_key_point_df.fillna(-1)
+    #
+    #         point = self.csv2Point(individual_key_point_df, 'Lng', 'Lat', 'EPSG:4326')
+    #         join_point = self.Point2Name('./gis/h12ka13.shp', point, ['KEY_CODE', 'PREF_NAME', 'CITY_NAME', 'S_NAME'],
+    #                                      'EPSG:4326')
+    #         join_point = join_point.fillna(-1)
+    #         if save_results:
+    #             if not os.path.exists('./key_point_table/'):
+    #                 os.mkdir('./key_point_table/')
+    #             join_point.to_csv('./key_point_table/' + str(self.user_id) + '_key_point_table.csv', index=False)
+    #     return join_point
+    #
+    # def generate_group_HWO_join_area2(self, save_results=False, new_gps_data=None):
+    #     if self.initialize:
+    #         if os.path.exists(self.clustering_results_folder + 'demo_2_KMeans.csv'):
+    #             df = pd.read_csv(self.clustering_results_folder + 'demo_2_KMeans.csv')
+    #         else:
+    #             df = self.clustering()
+    #     else:
+    #         df = self.clustering(new_gps_data=new_gps_data)
+    #     # 或者df = pd.read_csv('9_conduct_same_cluster_as2013//2011_7_cluster_KMeans.csv')
+    #
+    #     for i in range(len(df)):
+    #         user_ID = str(df.loc[i, 'user_id']).zfill(8)
+    #         # df_1_user_stay = pd.read_csv(
+    #         #     '2_great_tokyo_detect_home_work_order' + '//' + userID + '_great_tokyo_labeled.csv')
+    #         # self.raw_gps_file = user_ID
+    #         self.raw_gps_file = self.raw_gps_folder + user_ID + '.csv'
+    #         # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+    #         df_1_user_stay = self.detect_home_work(self.raw_gps_file)
+    #         df.loc[i, 'home_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lat'].mean()
+    #         df.loc[i, 'home_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['home_label_order'] == 0]['home_lon'].mean()
+    #         df.loc[i, 'work_Lat_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lat'].mean()
+    #         df.loc[i, 'work_Lng_WGS84'] = df_1_user_stay[df_1_user_stay['work_label_order'] == 0]['work_lon'].mean()
+    #
+    #     df['home_Lat_WGS84'].fillna(-1, inplace=True)
+    #     df['home_Lng_WGS84'].fillna(-1, inplace=True)
+    #     df_point = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['home_Lng_WGS84'], df['home_Lat_WGS84']),
+    #                                 crs='EPSG:4326')
+    #     Tokyo_map = gpd.read_file('./gis/tokyo_area_statistic.shp').to_crs({'init': 'EPSG:4326'})
+    #     Tokyo_map = Tokyo_map[['N03_001', 'N03_003', 'N03_004', 'geometry']]
+    #     join_point = gpd.sjoin(df_point, Tokyo_map, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    #     join_point = join_point.drop(['index_right', 'geometry'], axis=1)
+    #     join_point = join_point.fillna(-1)
+    #     if save_results:
+    #         join_point.to_csv('./11_demo_7_group_HWO_join_area2.csv', index=False)
 
 
 def apply_parallel(df_grouped, func):
@@ -976,5 +875,6 @@ if __name__ == '__main__':
     support_tree = lpp_v2.support_tree()
     merged_tree = lpp_v2.merge_tree(save_support_tree=False)
     pattern_probability = lpp_v2.pattern_probability_matrix()
-    print(pattern_probability)
+    print(np.shape(pattern_probability))
+    _, _, _ = lpp_v2.nmf_average()
     print('here')
