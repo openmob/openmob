@@ -1,14 +1,45 @@
 import argparse
-
+from joblib import Parallel, delayed
 import jismesh.utils as ju
 import numpy as np
 from pandas import DataFrame
-
+import multiprocessing
 import minitools
 
 
-def key_point_detection(self):
-    pass
+def key_point_detection(df_stay):
+
+    def _key_point_detection(df):
+
+        inner_container = {}
+        uid = df.user_id.values[0]
+        tmp = df.copy()
+        tmp = tmp.reset_index(drop=True)
+
+        for i in tmp.index:
+            if tmp.loc[i, 'home_label_order'] != -1:
+                inner_container.update({'H_' + str(tmp.loc[i, 'home_label_order']): tmp.loc[i, ['home_lat', 'home_lon']].values.astype(float)})
+            elif tmp.loc[i, 'work_label_order'] != -1:
+                inner_container.update({'W_' + str(tmp.loc[i, 'work_label_order']): tmp.loc[i, ['work_lat', 'work_lon']].values.astype(float)})
+            elif tmp.loc[i, 'other_label_order'] != -1:
+                inner_container.update({'O_' + str(tmp.loc[i, 'other_label_order']): tmp.loc[i, ['other_lat', 'other_lon']].values.astype(float)})
+
+        return {str(uid): inner_container}
+
+    def _apply_parallel_dict(df_grouped, func):
+
+        container = {}
+
+        ret_lst = Parallel(n_jobs=multiprocessing.cpu_count())(delayed(func)(group) for name, group in df_grouped)
+        for line in ret_lst:
+            container.update(line)
+
+        return container
+
+    key_points = _apply_parallel_dict(df_stay.groupby('user_id'), _key_point_detection)
+
+    return key_points
+
 
 
 parser = argparse.ArgumentParser(description='Args for Key Location Generator Training.')

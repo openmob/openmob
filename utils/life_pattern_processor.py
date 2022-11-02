@@ -755,6 +755,7 @@ class LifePatternProcessor:
 
         # filename_df = pd.DataFrame(filename_list)
         filename_df = pd.DataFrame(user_id_list)
+
         if save_results:
             # print('Saving NMF results...\n')
             df_w.to_csv(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv', index=False)
