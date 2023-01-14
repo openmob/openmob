@@ -1,1 +1,0 @@
-The code is designated to try to reproduce the vehicle trajectory by Kalman filter from NAVITIME dataset.
