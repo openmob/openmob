@@ -27,8 +27,8 @@ def load_tsmc2014_tky(input_file):
         df['timestamp'] = pd.to_datetime(df.timestamp)
         return df
 
-def load_bw(input_file):
 
+def load_bw(input_file):
     df = pd.read_csv(input_file, header=None, usecols=[0, 1, 2, 3])
     df.columns = ['user_id', 'timestamp', 'lat', 'lon']
     df['timestamp'] = pd.to_datetime(df.timestamp)

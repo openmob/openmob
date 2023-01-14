@@ -1,10 +1,14 @@
+import os
+import sys
 import argparse
-from openmob.utils import stay_point_detection
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from tools import stay_point_detection
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Args for separating trips from GPS trajectory datasets.')
     parser.add_argument('--input_file', '-if',
-                        default='../../datasets/dataset_tsmc2014/dataset_TSMC2014_TKY.csv',
+                        default='../datasets/dataset_tsmc2014/dataset_TSMC2014_TKY.csv',
                         help='file of GPS trajectory datasets.')
     parser.add_argument('--time_threshold', '-th',
                         default=10,

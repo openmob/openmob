@@ -1,8 +1,8 @@
 import multiprocessing
 from math import radians, cos, sin, asin, sqrt
-import data_loader
 import pandas as pd
 from joblib import Parallel, delayed
+from .data_loader import *
 
 
 def cal_distance(lon1, lat1, lon2, lat2):
@@ -89,7 +89,7 @@ def stay_point_detection_process(args):
     We will consider multiple input GPS files in the future.
     """
 
-    data = data_loader.load_tsmc2014_tky(args.input_file)
+    data = load_tsmc2014_tky(args.input_file)
     output_file_name = args.input_file.split('/')[-1].replace('.csv', '_stay_points.csv')
     stay_point_detector = StayPointDetector(args)
     try:

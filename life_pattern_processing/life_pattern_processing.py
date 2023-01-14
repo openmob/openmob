@@ -1,4 +1,4 @@
-from openmob.utils.life_pattern_processor import LifePatternProcessor
+from openmob.tools.life_pattern_processor import LifePatternProcessor
 import argparse
 
 

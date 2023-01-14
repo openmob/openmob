@@ -115,7 +115,7 @@ print(1)
 #
 #                 optimizer.zero_grad() ## 梯度归零
 #                 loss.backward()    ## 反向传播计算得到每个参数的梯度
-#                 torch.nn.utils.clip_grad_norm_(vae_.parameters(), 5)
+#                 torch.nn.tools.clip_grad_norm_(vae_.parameters(), 5)
 #                 optimizer.step()  ## 通过梯度下降执行一步参数更新
 #
 #             tmp2 = iteration - int(iteration*0.8)

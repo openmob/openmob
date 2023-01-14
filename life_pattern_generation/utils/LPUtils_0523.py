@@ -7,7 +7,7 @@ import torch
 # import torch_geometric.data as data
 # import torch_geometric.transforms as transforms
 import networkx as nx
-# from torch_geometric.utils.convert import to_networkx
+# from torch_geometric.tools.convert import to_networkx
 import matplotlib.pyplot as plt
 from utils import MiniTools
 import pandas as pd
@@ -244,7 +244,7 @@ def to_categorical(y, num_classes=None, dtype='float32'):
 
     Example:
 
-    >>> a = tf.keras.utils.to_categorical([0, 1, 2, 3], num_classes=4)
+    >>> a = tf.keras.tools.to_categorical([0, 1, 2, 3], num_classes=4)
     >>> a = tf.constant(a, shape=[4, 4])
     >>> print(a)
     tf.Tensor(
