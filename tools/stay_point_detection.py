@@ -98,7 +98,7 @@ def stay_point_detection_process(args):
                                             'lat', 'lon', 'venue_name']]
         sp = apply_parallel(data.groupby('user_id'), stay_point_detector.naive_stay_point_detection)
         sp.to_csv(args.output_folder + output_file_name, index=False)
-        return
+        return sp, data
     except OSError:
         print('error found...')
         return
