@@ -6,7 +6,7 @@ This project contains several preprocessing tools built by python:
   ![Stay Points Visualization](/figures/stay_points_vis.png)
 
 * Building life pattern tree from raw GPS trajectory data. 
-  ![Life Pattern Extraction](/functions/life_pattern_processing/nmf_results/demo_result.png)
+  ![Life Pattern Extraction](/life_pattern_processing/nmf_results/demo_result.png)
 * Preprocessing tools are used for the generation model of the "pseudo life pattern." 
 * Essential preprocessing tools for converting raw GPS data to grid-based data format.
 * Pseudo life pattern to the spatial sequence of trips.
