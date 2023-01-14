@@ -1,6 +1,6 @@
 import multiprocessing
 from math import radians, cos, sin, asin, sqrt
-from . import data_loader
+import data_loader
 import pandas as pd
 from joblib import Parallel, delayed
 
