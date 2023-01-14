@@ -11,8 +11,13 @@ from mpl_toolkits.mplot3d import Axes3D
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import NMF
-import japan_holidays
-from openmob.pool import data_loader
+import joblib
+import glob
+import tqdm
+import sklearn
+from scipy.optimize import least_squares
+from .japan_holidays import HolidayDataset
+from .data_loader import *
 
 warnings.filterwarnings('ignore')
 matplotlib.use('Agg')
@@ -42,11 +47,12 @@ class LifePatternProcessor:
         self.support_tree_folder = support_tree_folder
         self.raw_gps_folder = None
         self.NMF_results_folder = nmf_results_folder
-        self.initialize = False
         self.kept_data = None
 
-        # if self.initialize:
+    def initialize(self):
+
         self.create_folder()
+        return
         #     self.merge_tree(save_support_tree=True)
         #     self.NMF_average(save_results=True, raw_gps_file=self.raw_gps_file, raw_gps_folder=self.raw_gps_folder)
         #     # self.clustering(save_model=True)
@@ -71,7 +77,7 @@ class LifePatternProcessor:
         self.map_file = map_file
 
         # add if check to load different data source
-        data = data_loader.load_tsmc2014_tky_stay_points(self.raw_gps_file)
+        data = load_tsmc2014_tky_stay_points(self.raw_gps_file)
         self.user_id_list = data.user_id.unique()
 
         if len(self.user_id_list) == 0:
@@ -139,7 +145,7 @@ class LifePatternProcessor:
 
         self.kept_data['holiday'] = 0
         self.kept_data.loc[(self.kept_data['weekday'] == 6) | (self.kept_data['weekday'] == 7), 'holiday'] = 1
-        japan_holiday = japan_holidays.HolidayDataset.HOLIDAYS.keys()
+        japan_holiday = HolidayDataset.HOLIDAYS.keys()
         self.kept_data.loc[self.kept_data.arrival_time.dt.date.isin(japan_holiday), 'holiday'] = 1
 
         def _dbscan_individual(df):
@@ -680,6 +686,171 @@ class LifePatternProcessor:
 
         return df_w, df_h, filename_df
 
+    def mapping_in_space(self, new_gps_data, save_results=False):
+
+        if os.path.exists(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv'):
+            print('Loading existing meta file...')
+            df_meta = pd.read_csv(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv')
+        else:
+            print('Generating meta file...')
+            df_meta, df_h, filename = self.NMF_average()
+        # df_meta = pd.read_csv(NMF_dir + '//2013_W_multiple_HW_single_O_total_day.csv')
+        df_meta.columns = ['meta1', 'meta2', 'meta3']
+        meta1 = np.array(df_meta['meta1'])
+        meta2 = np.array(df_meta['meta2'])
+        meta3 = np.array(df_meta['meta3'])
+
+        x = [meta1, meta2, meta3]
+        p0 = [0.01, 0.01, 0.01]
+
+        if os.path.isfile(new_gps_data):
+            self.raw_gps_file = new_gps_data
+            # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+            df_individual = self.pattern_probability_matrix(raw_gps_file=self.raw_gps_file)
+            y = df_individual.values.copy()
+            para = least_squares(self.error, p0, args=(x, y), bounds=(0, np.inf))  # 进行拟合;args() 中是除了初始值之外error() 中的所有参数的集合输入。
+            xyz = para.x
+            # result_record_list = [self.id_, xyz[0], xyz[1], xyz[2]]
+            # result = pd.DataFrame(result_record_list, columns=['2011_user_ID', 'x', 'y', 'z'])
+            result = pd.DataFrame({'user_id': [self.user_id], 'x': [xyz[0]], 'y': [xyz[1]], 'z': [xyz[2]]})
+            if save_results:
+                # print('Saving results...\n')
+                result.to_csv(self.NMF_results_folder + '2011_mapping_coor_has_constraint.csv', index=False)
+            # print('finish')
+        else:
+            self.raw_gps_folder = new_gps_data
+            runlist = glob.glob(self.raw_gps_folder + '*.csv')
+
+            result_record_list = []
+            for i in tqdm(range(len(runlist))):
+                self.raw_gps_file = runlist[i]
+                # self.id_ = self.raw_gps_file.split('/')[-1].split('.')[0]
+                df_individual = self.pattern_probability_matrix(raw_gps_file=self.raw_gps_file)
+                y = df_individual.values.copy()
+                para = least_squares(self.error, p0, args=(x, y),
+                                     bounds=(0, np.inf))  # 进行拟合;args() 中是除了初始值之外error() 中的所有参数的集合输入。
+                xyz = para.x
+                result_record_list.append([self.user_id, xyz[0], xyz[1], xyz[2]])
+            result = pd.DataFrame(result_record_list, columns=['user_ID', 'x', 'y', 'z'])
+            if save_results:
+                # print('Saving results...\n')
+                result.to_csv(self.NMF_results_folder + '2011_mapping_coor_has_constraint.csv', index=False)
+            # print('finish')
+        return result
+
+    def clustering(self, save_results=False, save_visualization=False, n_clusters=2, n_clusters_max=30, save_model=True, new_gps_data=None):
+
+        checkpoint = all([os.path.exists(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv'),
+                          os.path.exists(self.NMF_results_folder + 'H_multiple_HW_single_O_total_day.csv'),
+                          os.path.exists(self.NMF_results_folder + 'filename_multiple_HW_single_O_total_day.csv')])
+        if checkpoint:
+            # print('Loading existing files...\n')
+            df_w = pd.read_csv(self.NMF_results_folder + 'W_multiple_HW_single_O_total_day.csv')
+            df_H0 = pd.read_csv(self.NMF_results_folder + 'H_multiple_HW_single_O_total_day.csv')
+            filename_list = pd.read_csv(self.NMF_results_folder + 'filename_multiple_HW_single_O_total_day.csv')
+        else:
+            print('Generating clustering results...\n')
+            df_w, df_H0, filename_list = self.NMF_average()
+        filename_list.columns = ['user_id']
+        filename0 = filename_list.reset_index(drop=True)
+
+        df_H1 = df_H0.T.copy()
+        df_H2 = df_H1.reset_index(drop=True)
+        df_H2.columns = ['x', 'y', 'z']
+        df_H2['user_id'] = filename_list['user_id'].copy()
+
+        all_df_point = df_H2[["x", "y", "z"]]
+        # print(1)
+        X = all_df_point.to_numpy(copy=True)
+        # print(2)
+
+        # KMeans
+        if self.initialize:
+            kmeanModel = sklearn.cluster.KMeans(n_clusters=n_clusters).fit(X)
+
+            a = pd.Series(kmeanModel.labels_)
+            b = kmeanModel.cluster_centers_
+            data_a = pd.concat([df_H2, a], axis=1)
+            data_a.columns = ['x', 'y', 'z', 'user_id', 'label']
+            if save_results:
+                data_a.to_csv(self.clustering_results_folder + 'demo_' + str(n_clusters) + '_KMeans.csv', index=False)
+            # print(1)
+            if save_model:
+                joblib.dump(kmeanModel, self.clustering_results_folder + 'demo_kmeanModel.pkl')
+
+            # visualization
+            if save_visualization:
+                cdict = {-1: 'black', 0: 'goldenrod', 1: "sandybrown", 2: 'yellowgreen', 3: "tomato", 4: 'plum', 5: 'steelblue',
+                         6: 'lightskyblue',
+                         7: 'lime', 8: "purple", 9: "indigo", 10: "peru", 11: 'sandybrown', 12: "fuchsia", 13: "red",
+                         14: "limegreen", 15: 'red', 16: 'deeppink'}
+
+                scatter_x = np.array(data_a['x'])
+                scatter_y = np.array(data_a['y'])
+                scatter_z = np.array(data_a['z'])
+                group = np.array(data_a['label'])
+
+                fig = plt.figure(figsize=(8, 5), dpi=200)
+                ax = Axes3D(fig, auto_add_to_figure=False)
+                fig.add_axes(ax)
+                for g in np.unique(group):
+                    ix = np.where(group == g)
+                    ax.scatter(scatter_x[ix], scatter_y[ix], scatter_z[ix], c=cdict[g], label=g, s=20)
+                ax.legend()
+                ax.view_init(elev=35, azim=45)
+
+                plt.savefig(self.clustering_results_folder + 'demo_7KMEANS.png')
+                # plt.show()
+                plt.close()
+        # print(1)
+        else:
+            if os.path.exists(self.clustering_results_folder + 'demo_kmeanModel.pkl'):
+                kmeanModel = joblib.load(self.clustering_results_folder + 'demo_kmeanModel.pkl')
+            else:
+                raise 'No pre-trained Kmeans model exists...'
+            df_2011 = self.mapping_in_space(new_gps_data=new_gps_data)
+
+            all_df_point_2011 = df_2011[["x", "y", "z"]]
+            X_2013 = all_df_point_2011.to_numpy(copy=True)
+
+            label_2011 = kmeanModel.predict(X_2013)
+
+            data_a = pd.concat([df_2011, pd.Series(label_2011)], axis=1)
+
+            data_a.columns = ['user_id', 'x', 'y', 'z', 'LP_label']
+            if save_results:
+                data_a.to_csv(self.clustering_results_folder + '2011_7_cluster_KMeans.csv', index=False)
+            if save_visualization:
+                cdict = {-1: 'black', 0: 'goldenrod', 1: "sandybrown", 2: 'yellowgreen', 3: "tomato", 4: 'plum', 5: 'steelblue',
+                         6: 'lightskyblue',
+                         7: 'lime', 8: "purple", 9: "indigo", 10: "peru", 11: 'sandybrown', 12: "fuchsia", 13: "red",
+                         14: "limegreen", 15: 'red', 16: 'deeppink'}
+
+                # data_a_2011 = pd.read_csv('9_conduct_same_clustor_as2013//2011_7_cluster_KMeans.csv')
+
+                scatter_x = np.array(data_a['x'])
+                scatter_y = np.array(data_a['y'])
+                scatter_z = np.array(data_a['z'])
+                group = np.array(data_a['LP_label'])
+
+                fig = plt.figure(figsize=(8, 5), dpi=200)
+                ax = Axes3D(fig,auto_add_to_figure=False)
+                fig.add_axes(ax)
+                for g in np.unique(group):
+                    ix = np.where(group == g)
+                    ax.scatter(scatter_x[ix], scatter_y[ix], scatter_z[ix], c=cdict[g], label=g, s=10)
+                ax.legend()
+                # ax.set_xlim((0, 0.2))
+                # ax.set_ylim((0, 0.2))
+                # ax.set_zlim((0, 0.2))
+                ax.view_init(elev=35, azim=45)
+                #
+                plt.savefig(self.clustering_results_folder + '2011_KMEANS_as2013.png')
+                # plt.show()
+                plt.close()
+                # print(1)
+        return data_a
+
     # def plus_home_work_location(self, save_results=False, new_gps_data=None):
     #
     #     if self.initialize:
@@ -871,14 +1042,17 @@ def apply_parallel(df_grouped, func):
 
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
+    lpp_v2.initialize()
+
     stay_data2 = lpp_v2.select_area(
         raw_gps_file='../stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
         map_file=None)
     container = lpp_v2.detect_home_work()
     sample = lpp_v2.extract_life_pattern()
     support_tree = lpp_v2.support_tree()
-    merged_tree = lpp_v2.merge_tree(save_support_tree=False)
+    merged_tree = lpp_v2.merge_tree(save_support_tree=True)
     pattern_probability = lpp_v2.pattern_probability_matrix()
     print(np.shape(pattern_probability))
     _, _, _ = lpp_v2.nmf_average()
+    lpp_v2.clustering(save_results=True)
     print('here')

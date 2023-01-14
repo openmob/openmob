@@ -1,4 +1,7 @@
-from openmob.tools.life_pattern_processor import LifePatternProcessor
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from tools.life_pattern_extractor import LifePatternProcessor
 import argparse
 
 
@@ -6,7 +9,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Args for extracting life pattern from GPS trajectory datasets.')
     parser.add_argument('--input_file', '-if',
-                        default='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
+                        default='../stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
                         help='file of GPS trajectory stay points.')
     parser.add_argument('--clustering_results_folder', '-crf', default='./clustering_results/')
     parser.add_argument('--support_tree_folder', '-stf', default='./support_tree/')
@@ -23,7 +26,7 @@ if __name__ == '__main__':
         dbscan_min_samples=args.dbscan_min_samples,
         distance_for_eps=args.distance_for_eps
                                )
-
+    lpp.initialize()
     lpp.select_area(raw_gps_file=args.input_file, map_file=None)
     lpp.detect_home_work()
     lpp.extract_life_pattern()
@@ -31,3 +34,5 @@ if __name__ == '__main__':
     lpp.merge_tree(save_support_tree=True)
     lpp.pattern_probability_matrix()
     lpp.nmf_average()
+    lpp.clustering(save_results=True)
+    print('Finished')
