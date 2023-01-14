@@ -21,16 +21,15 @@ openmob
 │   ├── gis
 │   ├── open_travel_mode_data
 │   └── ...
-├── scripts
+├── utils
 │   ├── tool_1.py
 │   ├── tool_2.py
 │   ├── tool_3.py
 │   └── ...
-└── functions
-    ├── stay_point_detection
-    ├── life_pattern_processing
-    ├── demographic_processing
-    └── ...
+├── stay_point_detection
+├── life_pattern_processing
+├── demographic_processing
+└── ...
 ```
 
 ## Datasets

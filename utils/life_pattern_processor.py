@@ -874,7 +874,7 @@ def apply_parallel(df_grouped, func):
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
     stay_data2 = lpp_v2.select_area(
-        raw_gps_file='../functions/stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
+        raw_gps_file='../stay_point_detection/dataset_TSMC2014_TKY_stay_points.csv',
         map_file=None)
     container = lpp_v2.detect_home_work()
     sample = lpp_v2.extract_life_pattern()

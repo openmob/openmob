@@ -448,5 +448,5 @@ class LifePatternProcessor:
 
 if __name__ == '__main__':
     lpp_v2 = LifePatternProcessor()
-    stay_data = lpp_v2.detect_home_work(raw_gps_file='../functions/stay_point_detection/stay_points/stay_points.csv')
+    stay_data = lpp_v2.detect_home_work(raw_gps_file='../stay_point_detection/stay_points/stay_points.csv')
     print('here')
