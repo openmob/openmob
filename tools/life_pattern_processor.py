@@ -1,7 +1,6 @@
 import multiprocessing
 import os.path
 import warnings
-
 import geopandas as gpd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -12,7 +11,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import NMF
-
 import japan_holidays
 from openmob.pool import data_loader
 

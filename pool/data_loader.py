@@ -56,7 +56,7 @@ if __name__ == '__main__':
                         default=10, type=int,
                         help='length of extracted users.')
     parser.add_argument('--output_folder', '-of',
-                        default='../functions/life_pattern_processing/individual_traj/',
+                        default='../functions/life_pattern_extraction/individual_traj/',
                         help='output folder of extracted individual trajectory.')
     args = parser.parse_args()
 
