@@ -48,6 +48,11 @@ Haoran Zhang, Dou Huang, Peiran Li, Jinyu Chen, Wenjing Li, Ning Xu, Hang Yin, a
 ## License
 OpenMOB is released under the MIT license. Please refer to [LICENSES](LICENSE) for the careful check.
 
+## Recent updates
+We release source codes of a new paper published in /for_VAEpaper_release.\
+If you find this part useful, please cite following paper: \
+[Li, W., Shi, X., Huang, D., Shen, X., Chen, J., Kobayashi, H. H., ... & Shibasaki, R. (2023). PredLife: Predicting Fine-grained Future Activity Patterns. IEEE Transactions on Big Data.](https://ieeexplore.ieee.org/document/10235301)
+
 ## Projects in OpenLab
 * **[OpenMob](https://github.com/openmob/openmob)**: This project is currently under development. We will continuously update this project.
 * **[OpenPV](https://github.com/OpenSolarPV/OpenPV)**: an open source toolbox for solar photovoltaics semantic segmentation.
